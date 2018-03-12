@@ -73,7 +73,7 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
     log_player_login:set_one(LogR),
     % 获取玩家的游戏数据
     GameData =
-        case run_role:get_one(UserId) of
+        case run_role:get_one({GameId, UserId}) of
             [] -> % 在该游戏中尚无角色
                 run_role:set_one(
                   #run_role{player_id = UserId,
