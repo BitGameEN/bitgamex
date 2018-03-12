@@ -22,7 +22,7 @@ get_game_data(GameId, UserId, DoCreate, CreateArgs) ->
                                     game_id = GameId,
                                     create_time = Now,
                                     last_login_time = Now,
-                                    last_login_ip = PeerIp,
+                                    last_login_ip = ?T2B(PeerIp),
                                     time = Now});
                     false -> void
                 end,
