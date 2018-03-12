@@ -81,7 +81,7 @@
 -define(T2S(T), util:term_to_string(T)).
 
 % 特定的几个错误码定义
--define(ERRNO_IP_BLOCKED, -999). % 参数不全
+-define(ERRNO_IP_BLOCKED, -999). % ip受限
 -define(ERRNO_MISSING_PARAM, -998). % 参数不全
 -define(ERRNO_WRONG_PARAM, -997). % 参数错误
 -define(ERRNO_VERIFY_FAILED, -996). % 校验失败

@@ -19,12 +19,12 @@ init([Port]) ->
         ]}
     ]),
 
-    %{ok, _} = cowboy:start_tls(https_listener, 100, [
-    %    {port, Port},
-    %    {cacertfile, "../priv/ssl/bitgame-ca.crt"},
-    %    {certfile, "../priv/ssl/server.crt"},
-    %    {keyfile, "../priv/ssl/server.key"}
-    %], #{env => #{dispatch => Dispatch}}),
+    {ok, _} = cowboy:start_tls(https_listener, 100, [
+        {port, 10000 + Port},
+        {cacertfile, "../priv/ssl/bitgame-ca.crt"},
+        {certfile, "../priv/ssl/server.crt"},
+        {keyfile, "../priv/ssl/server.key"}
+    ], #{env => #{dispatch => Dispatch}}),
     {ok, _} = cowboy:start_clear(http_listener, 100, [{port, Port}], #{env => #{dispatch => Dispatch}}),
 
     {ok, true}.

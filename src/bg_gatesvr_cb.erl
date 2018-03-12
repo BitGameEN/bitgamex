@@ -29,14 +29,21 @@ action(<<"GET">>, undefined, Req) ->
 
 % https://api.bitgamex.com/?a=login_game&uid=xx&game_id=xx&device_id=xx&time=xx&sign=xx
 action(<<"GET">>, <<"login_game">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, device_id, time, sign, device_model, os_type, os_ver, lang,
-                                     org_device_id, gc_id, gg_id, fb_id], Req),
+    ParamsMap = cowboy_req:match_qs([uid, game_id, device_id, time, sign,
+                                     {device_model, [], undefined},
+                                     {os_type, [], undefined},
+                                     {os_ver, [], undefined},
+                                     {lang, [], undefined},
+                                     {org_device_id, [], undefined},
+                                     {gc_id, [], undefined},
+                                     {gg_id, [], undefined},
+                                     {fb_id, [], undefined}], Req),
     #{uid := UidBin0, game_id := GameIdBin0, device_id := DeviceId0, time := TimeBin0, sign := Sign0,
-      device_model := DeviceModel, os_type := OsType, os_ver := OsVer, lang := Lang,
+      device_model := DeviceModel0, os_type := OsType0, os_ver := OsVer0, lang := Lang0,
       org_device_id := OrgDeviceId0, gc_id := GCId0, gg_id := GGId0, fb_id := FBId0} = ParamsMap,
     ?DBG("login_game: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, DeviceId0, TimeBin0, Sign0, OrgDeviceId0, GCId0, GGId0, FBId0],
-    [UidBin, GameIdBin, DeviceId, TimeBin, Sign, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
+    L = [UidBin0, GameIdBin0, DeviceId0, TimeBin0, Sign0, DeviceModel0, OsType0, OsVer0, Lang0, OrgDeviceId0, GCId0, GGId0, FBId0],
+    [UidBin, GameIdBin, DeviceId, TimeBin, Sign, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, DeviceId, TimeBin, Sign]) of
         true ->
             cowboy_req:reply(400, #{}, lib_http:reply_body_fail(Action, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>), Req);
