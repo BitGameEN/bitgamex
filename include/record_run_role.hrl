@@ -7,6 +7,7 @@
 		key_id,
 		player_id = 0, % 玩家id（用户id）
 		ver = 0, % 数据结构版本
+		game_id = 0, % 游戏id
 		create_time = 0, % 创建时间
 		last_login_time = 0, % 最后登陆时间
 		last_login_ip = <<"">>, % 最后登陆IP

@@ -11,13 +11,13 @@ init() ->
 	ets:new(run_role, [{keypos, #run_role.key_id}, named_table, public, set, ?ETSRC, ?ETSWC]),
 	ok.
 
-load_one(Player_id = Id) ->
+load_one({Game_id, Player_id} = Id) ->
 	get_one(Id, direct_from_db).
 
-get_one_locally(Player_id = Id) ->
+get_one_locally({Game_id, Player_id} = Id) ->
 	get_one(Id, just_from_ets).
 
-get_one(Player_id = Id) ->
+get_one({Game_id, Player_id} = Id) ->
 	case run_data:in_trans() of
 		true ->
 			case run_data:trans_get(run_role, Id) of
@@ -30,23 +30,23 @@ get_one(Player_id = Id) ->
 			get_one(Id, anyway)
 	end.
 
-get_one(Player_id = Id, just_from_ets) ->
+get_one({Game_id, Player_id} = Id, just_from_ets) ->
 	run_data:lookup_one(run_role, Id, false);
-get_one(Player_id = Id, direct_from_db) ->
+get_one({Game_id, Player_id} = Id, direct_from_db) ->
 	case cache:get(cache_key(Id)) of
 		{true, _Cas, Val0} ->
 			Val = run_data_ver:upgrade_if_need(Val0),
 			insert_ets(Val),
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where player_id=?">>, [Player_id]) of
+			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
 				[] -> [];
 				Row ->
 					insert_ets_from_db(Row),
 					run_data:lookup_one(run_role, Id, false)
 			end
 	end;
-get_one(Player_id = Id, anyway) ->
+get_one({Game_id, Player_id} = Id, anyway) ->
 	case run_data:lookup_one(run_role, Id, false) of
 		[] ->
 			case cache:get(cache_key(Id)) of
@@ -54,7 +54,7 @@ get_one(Player_id = Id, anyway) ->
 					Val = run_data_ver:upgrade_if_need(Val0),
 					Val;
 				_ ->
-					case db_esql:get_row(?DB_RUN, <<"select player_id,ver,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where player_id=?">>, [Player_id]) of
+					case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
 						[] -> [];
 						Row -> % do not insert ets
 							R = build_record_from_row(Row),
@@ -66,7 +66,7 @@ get_one(Player_id = Id, anyway) ->
 	end;
 get_one(_Id, _GetPolicy) -> throw(get_policy_not_supported).
 
-set_field(Player_id = Id, Field, Val) ->
+set_field({Game_id, Player_id} = Id, Field, Val) ->
 	Fields = record_info(fields, run_role),
 	L = lists:zip(Fields, lists:seq(1, length(Fields))),
 	{_, N} = lists:keyfind(Field, 1, L),
@@ -100,6 +100,7 @@ set_one(R0) when is_record(R0, run_role) ->
 			#run_role{
 				player_id = Player_id,
 				ver = Ver,
+				game_id = Game_id,
 				create_time = Create_time,
 				last_login_time = Last_login_time,
 				last_login_ip = Last_login_ip,
@@ -107,10 +108,10 @@ set_one(R0) when is_record(R0, run_role) ->
 				old_game_data = Old_game_data,
 				time = Time
 			} = R0,
-			R = R0#run_role{key_id = Player_id, player_id = Player_id, ver = run_data_ver:newest_ver(run_role)},
+			R = R0#run_role{key_id = {Game_id, Player_id}, ver = run_data_ver:newest_ver(run_role)},
 			F = fun() ->
-					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role(player_id,ver,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(~p,~p,~p,~p,'~s','~s','~s',~p)">>,
-						[Player_id, Ver, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time])) end),
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(~p,~p,~p,~p,~p,'~s','~s','~s',~p)">>,
+						[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time])) end),
 					cache:set(cache_key(R#run_role.key_id), R),
 					insert_ets(R)
 				end,
@@ -125,7 +126,7 @@ set_one(R0) when is_record(R0, run_role) ->
 
 del_one(R) when is_record(R, run_role) ->
 	del_one(R, false);
-del_one(Player_id = Id) ->
+del_one({Game_id, Player_id} = Id) ->
 	del_one(Id, false).
 
 del_one(R, DelDbAlso) when is_record(R, run_role) ->
@@ -135,17 +136,17 @@ del_one(R, DelDbAlso) when is_record(R, run_role) ->
 				fun() -> run_role:del_one(R, DelDbAlso) end,
 				void);
 		false ->
-			Player_id = R#run_role.key_id,
+			{Game_id, Player_id} = R#run_role.key_id,
 			case DelDbAlso of
 				true ->
-					run_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, <<"delete from role where player_id=?">>, [Player_id]) end),
+					run_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, <<"delete from role where game_id=? and player_id=?">>, [Game_id, Player_id]) end),
 					cache:del(cache_key(R#run_role.key_id));
 				false -> void
 			end,
 			ets:delete(run_role, R#run_role.key_id)
 	end,
 	ok;
-del_one(Player_id = Id, DelDbAlso) ->
+del_one({Game_id, Player_id} = Id, DelDbAlso) ->
 	case util:lookup_one(run_role, Id, false) of
 		[] ->
 			case DelDbAlso of
@@ -159,12 +160,12 @@ del_one(Player_id = Id, DelDbAlso) ->
 		R -> del_one(R, DelDbAlso)
 	end.
 
-reload_one(Player_id = Id) ->
+reload_one({Game_id, Player_id} = Id) ->
 	cache:del(cache_key(Id)),
 	case util:lookup_one(run_role, Id, false) of
 		[] -> true;
 		R ->
-			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where player_id=?">>, [Player_id]) of
+			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
 				[] -> false;
 				Row ->
 					insert_ets_from_db(Row),
@@ -177,11 +178,11 @@ clean_all_cache() ->
 	ok.
 
 clean_all_cache(N) ->
-	case db_esql:get_all(?DB_RUN, <<"select player_id from role limit ?, 1000">>, [N * 1000]) of
+	case db_esql:get_all(?DB_RUN, <<"select game_id, player_id from role limit ?, 1000">>, [N * 1000]) of
 		[] -> ok;
 		Rows ->
 			F = fun(Id) -> cache:del(cache_key(Id)) end,
-			[F(Id) || [Id | _] <- Rows],
+			[F({Id1, Id2}) || [Id1, Id2 | _] <- Rows],
 			clean_all_cache(N + 1)
 	end.
 
@@ -189,6 +190,7 @@ syncdb(R) when is_record(R, run_role) ->
 	#run_role{
 		player_id = Player_id,
 		ver = Ver,
+		game_id = Game_id,
 		create_time = Create_time,
 		last_login_time = Last_login_time,
 		last_login_ip = Last_login_ip,
@@ -196,16 +198,16 @@ syncdb(R) when is_record(R, run_role) ->
 		old_game_data = Old_game_data,
 		time = Time
 	} = R,
-	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, <<"insert into role(player_id,ver,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(?,?,?,?,?,?,?,?) on duplicate key update "
-		"ver = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, time = ?">>,
-		[Player_id, Ver, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time,Ver, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) end);
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, <<"insert into role(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(?,?,?,?,?,?,?,?,?) on duplicate key update "
+		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, time = ?">>,
+		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time,Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) end);
 syncdb(Gid) ->
 	case get_one_locally(Gid) of
 		[] -> void;
 		R -> syncdb(R)
 	end.
 
-insert_ets_from_db([Player_id|_] = Row) ->
+insert_ets_from_db([Game_id, Player_id|_] = Row) ->
 	R = build_record_from_row(Row),
 	cache:set(cache_key(R#run_role.key_id), R),
 	insert_ets(R).
@@ -214,11 +216,12 @@ insert_ets(R) ->
 	ets:insert(run_role, R),
 	ok.
 
-build_record_from_row([Player_id, Ver, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) ->
+build_record_from_row([Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) ->
 	R0 = #run_role{
-		key_id = Player_id,
+		key_id = {Game_id, Player_id},
 		player_id = Player_id,
 		ver = Ver,
+		game_id = Game_id,
 		create_time = Create_time,
 		last_login_time = Last_login_time,
 		last_login_ip = Last_login_ip,
@@ -231,6 +234,6 @@ build_record_from_row([Player_id, Ver, Create_time, Last_login_time, Last_login_
 update_keymap_if_need(Old, R) ->
 	ok.
 
-cache_key(Player_id = Id) ->
-	list_to_binary(io_lib:format(<<"run_role_~p">>, [Player_id])).
+cache_key({Game_id, Player_id} = Id) ->
+	list_to_binary(io_lib:format(<<"run_role_~p_~p">>, [Game_id, Player_id])).
 

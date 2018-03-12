@@ -369,7 +369,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
             [PriFieldName2 | _] = FieldNames2,
             gen_erl_fields(FieldNames, FieldNames2, S),
             io:format(S, "\t\t\t} = R0,~n", []),
-            io:format(S, "\t\t\tR = R0#~s{key_id = ~s, ~s = ~s, ver = run_data_ver:newest_ver(~s)},~n", [RecordName, PriFieldName2, gen_pri_id(PriNames), PriFieldName2, RecordName]);
+            io:format(S, "\t\t\tR = R0#~s{key_id = ~s, ver = run_data_ver:newest_ver(~s)},~n", [RecordName, PriId, RecordName]);
         0 ->
             gen_erl_fields(FieldNames, FieldNames2, S),
             io:format(S, "\t\t\t} = R0,~n", []),
@@ -412,7 +412,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\t\t\t\tfun() -> ~s:del_one(R, DelDbAlso) end,~n", [RecordName]),
     io:format(S, "\t\t\t\tvoid);~n", []),
     io:format(S, "\t\tfalse ->~n", []),
-    io:format(S, "\t\t\t~s = R#~s.key_id,~n", [PirId2, RecordName]),
+    io:format(S, "\t\t\t~s = R#~s.key_id,~n", [PriId, RecordName]),
     io:format(S, "\t\t\tcase DelDbAlso of~n", []),
     io:format(S, "\t\t\t\ttrue ->~n", []),
     case OtherKeys2 of
@@ -479,11 +479,16 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\tok.~n~n", []),
 
     io:format(S, "clean_all_cache(N) ->~n", []),
-    io:format(S, "\tcase db_esql:get_all(?DB_RUN, <<\"select ~s from ~s limit ?, 1000\">>, [N * 1000]) of~n", [gen_pri_id(PriNames), Table]),
+    io:format(S, "\tcase db_esql:get_all(?DB_RUN, <<\"select ~s from ~s limit ?, 1000\">>, [N * 1000]) of~n", [gen_id_no_bracket(PriNames, ", "), Table]),
     io:format(S, "\t\t[] -> ok;~n", []),
     io:format(S, "\t\tRows ->~n", []),
     io:format(S, "\t\t\tF = fun(Id) -> cache:del(cache_key(Id)) end,~n", []),
-    io:format(S, "\t\t\t[F(Id) || [Id | _] <- Rows],~n", []),
+    case length(PriNames) of
+        1 ->
+            io:format(S, "\t\t\t[F(Id) || [Id | _] <- Rows],~n", []);
+        2 ->
+            io:format(S, "\t\t\t[F({Id1, Id2}) || [Id1, Id2 | _] <- Rows],~n", [])
+    end,
     io:format(S, "\t\t\tclean_all_cache(N + 1)~n", []),
     io:format(S, "\tend.~n~n", []),
 
@@ -590,7 +595,12 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
         0 ->
             io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s_~s\">>, [get(game_id),~s])).~n~n", [RecordName, "~p", "~p", PirId2]);
         _ ->
-            io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s\">>, [~s])).~n~n", [RecordName, "~p", PirId2])
+            case length(PriNames) of
+                1 ->
+                    io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s\">>, [~s])).~n~n", [RecordName, "~p", PirId2]);
+                2 ->
+                    io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s_~s\">>, [~s])).~n~n", [RecordName, "~p", "~p", PirId2])
+            end
     end,
 
     file:close(S).
@@ -697,7 +707,9 @@ gen_id_no_bracket(FieldNames, Imploder) ->
     list_to_binary(L).
 
 gen_pri_id([FieldName]) ->
-    FieldName.
+    FieldName;
+gen_pri_id([FieldName1, FieldName2]) ->
+    <<"{", FieldName1/binary, ",", FieldName2/binary, "}">>.
 
 gen_id_sql([FieldName]) ->
     <<FieldName/binary, "=?">>;
