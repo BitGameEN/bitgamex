@@ -97,8 +97,42 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
                                 true -> void;
                                 false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>})
                             end,
-                            #usr_user{current_game_id = GameId, session_token = Token} = User = usr_user:get_one(Uid),
+                            #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+                            case TheGameId =:= GameId andalso TheToken =:= Token of
+                                true -> void;
+                                false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>})
+                            end,
                             {ok, ResMap} = c_gatesvr:api_bind_user([User, BindType, BindVal]),
+                            cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
+                    end
+            end
+    end;
+
+% https://api.bitgamex.com/?a=get_game&uid=xx&game_id=xx&token=xx
+action(<<"GET">>, <<"get_game">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0} = ParamsMap,
+    ?DBG("get_game: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0],
+    [UidBin, GameIdBin, Token] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token]) of
+        true ->
+            cowboy_req:reply(400, #{}, lib_http:reply_body_fail(Action, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>), Req);
+        false ->
+            Uid = binary_to_integer(UidBin),
+            GameId = binary_to_integer(GameIdBin),
+            case usr_game:get_one(GameId) of
+                #usr_game{open_status = OpenStatus, game_key = GameKey} ->
+                    case OpenStatus =:= 0 of
+                        true ->
+                            throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                        false ->
+                            #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+                            case TheGameId =:= GameId andalso TheToken =:= Token of
+                                true -> void;
+                                false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>})
+                            end,
+                            {ok, ResMap} = c_gatesvr:api_get_game([User]),
                             cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
                     end
             end

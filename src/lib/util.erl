@@ -36,6 +36,7 @@
         url_encode/1,
         url_decode/1,
         html_unescape/1,
+        is_process_alive/1,
         upper_1st_char/1,
         esc/1,
         contains/2,
@@ -367,6 +368,22 @@ html_unescape([$&,$l,$t,$;|T], Acc) -> html_unescape(T, [$<|Acc]);
 html_unescape([$&,$g,$t,$;|T], Acc) -> html_unescape(T, [$>|Acc]);
 html_unescape([$&,$q,$u,$o,$t,$;|T], Acc) -> html_unescape(T, [$"|Acc]);
 html_unescape([H|T], Acc) -> html_unescape(T, [H|Acc]).
+
+is_process_alive(Pid) ->
+    try
+        case is_pid(Pid) of
+            true ->
+                case rpc:call(node(Pid), erlang, is_process_alive, [Pid]) of
+                    {badrpc, Reason} ->
+                        ?ERR("is_process_alive: pid=~p, from_node=~p, to_node=~p, reason=~p~nstack=~p~n", [Pid, node(), node(Pid), Reason, erlang:get_stacktrace()]),
+                        false;
+                    Res -> Res
+                end;
+            false -> false
+        end
+    catch
+        _:_ -> false
+    end.
 
 upper_1st_char(<<First:8, Rest/binary>>) when First >= $a, First =< $z ->
     <<(First+$A-$a):8, Rest/binary>>;
