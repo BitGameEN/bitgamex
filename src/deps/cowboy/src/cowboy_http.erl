@@ -175,14 +175,8 @@ loop(State=#state{parent=Parent, socket=Socket, transport=Transport,
 			terminate(State, {socket_error, Reason, 'An error has occurred on the socket.'});
 		%% Timeouts.
 		{timeout, TimerRef, Reason} ->
-      {ok, S1} = file:open("msg.txt", [write, append]),
-      catch io:format(S1, "=====>~n~p~nbuffer(~p)=~p~n", [State, byte_size(Buffer), Buffer]),
-      file:close(S1),
 			timeout(State, Reason);
 		{timeout, _, _} ->
-      {ok, S2} = file:open("msg.txt", [write, append]),
-      catch io:format(S2, "=====>~n~p~nbuffer(~p)=~p~n", [State, byte_size(Buffer), Buffer]),
-      file:close(S2),
 			loop(State, Buffer);
 		%% System messages.
 		{'EXIT', Parent, Reason} ->
