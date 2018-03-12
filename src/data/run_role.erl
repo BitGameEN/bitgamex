@@ -3,7 +3,7 @@
 %%% @Description: 自动生成
 %%%--------------------------------------------------------
 -module(run_role).
--export([init/0, load_one/1, get_one_locally/1, get_one/1, set_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/0, cache_key/1]).
+-export([init/0, load_one/1, get_one_locally/1, get_one/1, set_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/1, cache_key/1]).
 -include("common.hrl").
 -include("record_run_role.hrl").
 
@@ -39,7 +39,7 @@ get_one({Game_id, Player_id} = Id, direct_from_db) ->
 			insert_ets(Val),
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
+			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 				[] -> [];
 				Row ->
 					insert_ets_from_db(Row),
@@ -54,7 +54,7 @@ get_one({Game_id, Player_id} = Id, anyway) ->
 					Val = run_data_ver:upgrade_if_need(Val0),
 					Val;
 				_ ->
-					case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
+					case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 						[] -> [];
 						Row -> % do not insert ets
 							R = build_record_from_row(Row),
@@ -110,8 +110,8 @@ set_one(R0) when is_record(R0, run_role) ->
 			} = R0,
 			R = R0#run_role{key_id = {Game_id, Player_id}, ver = run_data_ver:newest_ver(run_role)},
 			F = fun() ->
-					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(~p,~p,~p,~p,~p,'~s','~s','~s',~p)">>,
-						[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time])) end),
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(~p,~p,~p,~p,~p,'~s','~s','~s',~p)">>,
+						[Game_id, Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time])) end),
 					cache:set(cache_key(R#run_role.key_id), R),
 					insert_ets(R)
 				end,
@@ -139,7 +139,7 @@ del_one(R, DelDbAlso) when is_record(R, run_role) ->
 			{Game_id, Player_id} = R#run_role.key_id,
 			case DelDbAlso of
 				true ->
-					run_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, <<"delete from role where game_id=? and player_id=?">>, [Game_id, Player_id]) end),
+					run_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"delete from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) end),
 					cache:del(cache_key(R#run_role.key_id));
 				false -> void
 			end,
@@ -165,7 +165,7 @@ reload_one({Game_id, Player_id} = Id) ->
 	case util:lookup_one(run_role, Id, false) of
 		[] -> true;
 		R ->
-			case db_esql:get_row(?DB_RUN, <<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role where game_id=? and player_id=?">>, [Game_id, Player_id]) of
+			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 				[] -> false;
 				Row ->
 					insert_ets_from_db(Row),
@@ -173,17 +173,17 @@ reload_one({Game_id, Player_id} = Id) ->
 			end
 	end.
 
-clean_all_cache() ->
-	clean_all_cache(0),
+clean_all_cache(Game_id) ->
+	clean_all_cache(0, Game_id),
 	ok.
 
-clean_all_cache(N) ->
-	case db_esql:get_all(?DB_RUN, <<"select game_id, player_id from role limit ?, 1000">>, [N * 1000]) of
+clean_all_cache(N, Game_id) ->
+	case db_esql:get_all(?DB_RUN, io_lib:format(<<"select game_id, player_id from role_~p limit ?, 1000">>, [Game_id]), [N * 1000]) of
 		[] -> ok;
 		Rows ->
 			F = fun(Id) -> cache:del(cache_key(Id)) end,
 			[F({Id1, Id2}) || [Id1, Id2 | _] <- Rows],
-			clean_all_cache(N + 1)
+			clean_all_cache(N + 1, Game_id)
 	end.
 
 syncdb(R) when is_record(R, run_role) ->
@@ -198,8 +198,8 @@ syncdb(R) when is_record(R, run_role) ->
 		old_game_data = Old_game_data,
 		time = Time
 	} = R,
-	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, <<"insert into role(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(?,?,?,?,?,?,?,?,?) on duplicate key update "
-		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, time = ?">>,
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(?,?,?,?,?,?,?,?,?) on duplicate key update "
+		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, time = ?">>, [Game_id]),
 		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time,Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) end);
 syncdb(Gid) ->
 	case get_one_locally(Gid) of

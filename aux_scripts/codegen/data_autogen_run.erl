@@ -200,7 +200,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\t\t\tinsert_ets(Val),~n", []),
     io:format(S, "\t\t\tVal;~n", []),
     io:format(S, "\t\t_ ->~n", []),
-    io:format(S, "\t\t\tcase db_esql:get_row(?DB_RUN, <<\"select ~s from ~s where ~s\">>, [~s]) of~n",
+    io:format(S, "\t\t\tcase db_esql:get_row(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p where ~s\">>, [Game_id]), [~s]) of~n",
         [gen_id_no_bracket(FieldNames, ","), Table, gen_id_sql(PriNames), PirId2]),
     io:format(S, "\t\t\t\t[] -> [];~n", []),
     io:format(S, "\t\t\t\tRow ->~n", []),
@@ -217,7 +217,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\t\t\t\t\tVal = run_data_ver:upgrade_if_need(Val0),~n", []),
     io:format(S, "\t\t\t\t\tVal;~n", []),
     io:format(S, "\t\t\t\t_ ->~n", []),
-    io:format(S, "\t\t\t\t\tcase db_esql:get_row(?DB_RUN, <<\"select ~s from ~s where ~s\">>, [~s]) of~n",
+    io:format(S, "\t\t\t\t\tcase db_esql:get_row(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p where ~s\">>, [Game_id]), [~s]) of~n",
         [gen_id_no_bracket(FieldNames, ","), Table, gen_id_sql(PriNames), PirId2]),
     io:format(S, "\t\t\t\t\t\t[] -> [];~n", []),
     io:format(S, "\t\t\t\t\t\tRow -> % do not insert ets~n", []),
@@ -242,10 +242,10 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
             io:format(S, "\t\t[] ->~n", []),
             case OtherKey =:= [<<"player_id">>] of
                 true ->
-                    io:format(S, "\t\t\tcase db_esql:get_all(?DB_RUN, <<\"select ~s from ~s where ~s\">>, [~s]) of~n",
+                    io:format(S, "\t\t\tcase db_esql:get_all(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p where ~s\">>, [Game_id]), [~s]) of~n",
                         [gen_id_no_bracket(FieldNames, ","), Table, gen_id_sql(OtherKey), OtherId2]);
                 false ->
-                    io:format(S, "\t\t\tcase db_esql:get_all(?DB_RUN, <<\"select ~s from ~s where ~s\">>, [~s]) of~n",
+                    io:format(S, "\t\t\tcase db_esql:get_all(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p where ~s\">>, [Game_id]), [~s]) of~n",
                         [gen_id_no_bracket(PriNames, ", "), Table, gen_id_sql(OtherKey), OtherId2])
             end,
             io:format(S, "\t\t\t\t[] ->~n", []),
@@ -373,17 +373,17 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
         0 ->
             gen_erl_fields(FieldNames, FieldNames2, S),
             io:format(S, "\t\t\t} = R0,~n", []),
-            io:format(S, "\t\t\t{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_RUN, io_lib:format(<<\"insert into ~s(~s) values(~s); select last_insert_id()\">>,~n\t\t\t\t[~s])),~n",
+            io:format(S, "\t\t\t{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s); select last_insert_id()\">>,~n\t\t\t\t[Game_id, ~s])),~n",
                 [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]),
             io:format(S, "\t\t\tR = R0#~s{key_id = Insert_id, ~s = Insert_id, ver = run_data_ver:newest_ver(~s)},~n", [RecordName, gen_pri_id(PriNames), RecordName])
     end,
     io:format(S, "\t\t\tF = fun() ->~n", []),
     case NeedGid of
         1 ->
-            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s(~s) values(~s)\">>,~n\t\t\t\t\t\t[~s])) end),~n",
+            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s)\">>,~n\t\t\t\t\t\t[Game_id, ~s])) end),~n",
                 [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]);
         2 ->
-            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s(~s) values(~s)\">>,~n\t\t\t\t\t\t[~s])) end),~n",
+            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s)\">>,~n\t\t\t\t\t\t[Game_id, ~s])) end),~n",
                 [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]);
         0 -> void
     end,
@@ -433,7 +433,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
             end
         end,
     [GenKeyMapDelF(KL) || {_K, KL} <- OtherKeys2],
-    io:format(S, "\t\t\t\t\trun_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, <<\"delete from ~s where ~s\">>, [~s]) end),~n", [Table, gen_id_sql(PriNames), PirId2]),
+    io:format(S, "\t\t\t\t\trun_data:db_write(del, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<\"delete from ~s_~~p where ~s\">>, [Game_id]), [~s]) end),~n", [Table, gen_id_sql(PriNames), PirId2]),
     io:format(S, "\t\t\t\t\tcache:del(cache_key(R#~s.key_id));~n", [RecordName]),
     io:format(S, "\t\t\t\tfalse -> void~n", []),
     io:format(S, "\t\t\tend,~n", []),
@@ -465,7 +465,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\tcase util:lookup_one(~s, Id, ~p) of~n", [ModuleName, UseMnesia]),
     io:format(S, "\t\t[] -> true;~n", []),
     io:format(S, "\t\tR ->~n", []),
-    io:format(S, "\t\t\tcase db_esql:get_row(?DB_RUN, <<\"select ~s from ~s where ~s\">>, [~s]) of~n",
+    io:format(S, "\t\t\tcase db_esql:get_row(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p where ~s\">>, [Game_id]), [~s]) of~n",
         [gen_id_no_bracket(FieldNames, ","), Table, gen_id_sql(PriNames), PirId2]),
     io:format(S, "\t\t\t\t[] -> false;~n", []),
     io:format(S, "\t\t\t\tRow ->~n", []),
@@ -474,12 +474,12 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\t\t\tend~n", []),
     io:format(S, "\tend.~n~n", []),
 
-    io:format(S, "clean_all_cache() ->~n", []),
-    io:format(S, "\tclean_all_cache(0),~n", []),
+    io:format(S, "clean_all_cache(Game_id) ->~n", []),
+    io:format(S, "\tclean_all_cache(0, Game_id),~n", []),
     io:format(S, "\tok.~n~n", []),
 
-    io:format(S, "clean_all_cache(N) ->~n", []),
-    io:format(S, "\tcase db_esql:get_all(?DB_RUN, <<\"select ~s from ~s limit ?, 1000\">>, [N * 1000]) of~n", [gen_id_no_bracket(PriNames, ", "), Table]),
+    io:format(S, "clean_all_cache(N, Game_id) ->~n", []),
+    io:format(S, "\tcase db_esql:get_all(?DB_RUN, io_lib:format(<<\"select ~s from ~s_~~p limit ?, 1000\">>, [Game_id]), [N * 1000]) of~n", [gen_id_no_bracket(PriNames, ", "), Table]),
     io:format(S, "\t\t[] -> ok;~n", []),
     io:format(S, "\t\tRows ->~n", []),
     io:format(S, "\t\t\tF = fun(Id) -> cache:del(cache_key(Id)) end,~n", []),
@@ -489,7 +489,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
         2 ->
             io:format(S, "\t\t\t[F({Id1, Id2}) || [Id1, Id2 | _] <- Rows],~n", [])
     end,
-    io:format(S, "\t\t\tclean_all_cache(N + 1)~n", []),
+    io:format(S, "\t\t\tclean_all_cache(N + 1, Game_id)~n", []),
     io:format(S, "\tend.~n~n", []),
 
     io:format(S, "syncdb(R) when is_record(R, ~s) ->~n", [RecordName]),
@@ -500,7 +500,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     [_ | NonPriFieldNames2] = FieldNames2,
     [_ | NonPriFieldTypes] = FieldTypes,
     [_ | NonPriFieldComments] = FieldComments,
-    io:format(S, "\trun_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, <<\"insert into ~s(~s) values(~s) on duplicate key update \"~n\t\t\"~s\">>,~n\t\t[~s,~s]) end);~n",
+    io:format(S, "\trun_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s) on duplicate key update \"~n\t\t\"~s\">>, [Game_id]),~n\t\t[~s,~s]) end);~n",
         [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder(length(FieldNames)), gen_update_fields_sql(NonPriFieldNames),
          gen_fields_sql(FieldNames2, FieldTypes, FieldComments), gen_fields_sql(NonPriFieldNames2, NonPriFieldTypes, NonPriFieldComments)]),
 
@@ -613,10 +613,10 @@ gen_erl_note(Table, ModuleName, OtherKeysLower, S, UseMnesia) ->
     io:format(S, "-module(~s).~n", [ModuleName]),
     case UseMnesia of
         false ->
-            io:format(S, "-export([init/0, load_one/1, get_one_locally/1, get_one/1, ~sset_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/0, cache_key/1]).~n",
+            io:format(S, "-export([init/0, load_one/1, get_one_locally/1, get_one/1, ~sset_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/1, cache_key/1]).~n",
                 [gen_getonebyotherkey(Table, OtherKeysLower)]);
         true ->
-            io:format(S, "-export([table_def/1, load_one/1, get_one_locally/1, get_one/1, ~sset_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/0, cache_key/1]).~n",
+            io:format(S, "-export([table_def/1, load_one/1, get_one_locally/1, get_one/1, ~sset_one/1, set_field/3, del_one/1, del_one/2, syncdb/1, reload_one/1, clean_all_cache/1, cache_key/1]).~n",
                 [gen_getonebyotherkey(Table, OtherKeysLower)])
     end,
     io:format(S, "-include(\"common.hrl\").~n", []),
