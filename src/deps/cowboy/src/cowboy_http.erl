@@ -215,9 +215,7 @@ loop(State=#state{parent=Parent, socket=Socket, transport=Transport,
 
 set_request_timeout(State0=#state{opts=Opts}) ->
 	State = cancel_request_timeout(State0),
-    % 修改默认超时到15秒
-	%Timeout = maps:get(request_timeout, Opts, 5000),
-    Timeout = maps:get(request_timeout, Opts, 15000),
+	Timeout = maps:get(request_timeout, Opts, 5000),
 	TimerRef = erlang:start_timer(Timeout, self(), request_timeout),
 	State#state{timer=TimerRef}.
 
@@ -1020,7 +1018,7 @@ terminate(_State, normal) ->
 terminate(_State, {socket_error,closed,_}) ->
     exit(normal);
 terminate(_State, _Reason) ->
-    ?ERR("cowboy session issue: ~p~n", [_Reason]),
+    ?DBG("cowboy session issue: ~p~n", [_Reason]),
 	exit(normal). %% @todo
 
 
