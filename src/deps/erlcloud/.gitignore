@@ -1,0 +1,21 @@
+# IntelliJ IDEA
+/.idea
+*.iml
+
+*.beam
+*.tmproj
+_build
+ebin/*.beam
+ebin/*.app
+.eunit/
+.rebar/
+rebar
+*.sublime-*
+deps/
+doc/
+erl_crash.dump
+.edts
+eunit.coverage.xml
+ercloud.iml
+*[#]*[#]
+*[#]*

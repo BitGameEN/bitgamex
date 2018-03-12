@@ -1,0 +1,14 @@
+{application, cberl,
+ [
+  {description, ""},
+  {vsn, "1.0.6"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  poolboy,
+                  jiffy
+                 ]},
+  {mod, { cberl_app, []}},
+  {env, []}
+ ]}.

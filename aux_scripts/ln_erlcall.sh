@@ -1,0 +1,1 @@
+ln -s /usr/local/erlang/lib/erlang/lib/erl_interface-3.10.1/bin/erl_call /usr/bin/erl_call

@@ -1,0 +1,1 @@
+dialyzer --build_plt --apps erts kernel stdlib mnesia crypto sasl

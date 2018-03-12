@@ -1,0 +1,53 @@
+[[introduction]]
+== Introduction
+
+Cowboy is a small, fast and modular HTTP server written in Erlang.
+
+Cowboy aims to provide a complete xref:modern_web[modern Web stack].
+This includes HTTP/1.1, HTTP/2, Websocket, Server-Sent Events and
+Webmachine-based REST.
+
+Cowboy comes with functions for introspection and tracing, enabling
+developers to know precisely what is happening at any time. Its modular
+design also easily enable developers to add instrumentation.
+
+Cowboy is a high quality project. It has a small code base, is very
+efficient (both in latency and memory use) and can easily be embedded
+in another application.
+
+Cowboy is clean Erlang code. It includes hundreds of tests and its code
+is fully compliant with the Dialyzer. It is also well documented and
+features a Function Reference, a User Guide and numerous Tutorials.
+
+=== Prerequisites
+
+Beginner Erlang knowledge is recommended for reading this guide.
+
+Knowledge of the HTTP protocol is recommended but not required, as it
+will be detailed throughout the guide.
+
+=== Supported platforms
+
+Cowboy is tested and supported on Linux, FreeBSD, Windows and OSX.
+
+Cowboy has been reported to work on other platforms, but we make no
+guarantee that the experience will be safe and smooth. You are advised
+to perform the necessary testing and security audits prior to deploying
+on other platforms.
+
+Cowboy is developed for Erlang/OTP 18.0 and newer.
+
+=== Versioning
+
+Cowboy uses http://semver.org/[Semantic Versioning 2.0.0].
+
+=== Conventions
+
+In the HTTP protocol, the method name is case sensitive. All standard
+method names are uppercase.
+
+Header names are case insensitive. Cowboy converts all the request
+header names to lowercase, and expects your application to provide
+lowercase header names in the response.
+
+The same applies to any other case insensitive value.

@@ -1,0 +1,9 @@
+*~
+/.eunit
+/_test
+/doc
+/ebin
+/TEST-*.xml
+/deps
+*.swp
+.DS_Store

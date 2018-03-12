@@ -1,0 +1,61 @@
+{
+    [
+        '../src/deps/emysql/src/*',
+        '../src/deps/erlcron/src/*',
+        '../src/deps/gproc/src/*',
+        '../src/deps/gproc/patches/gen_leader/*',
+        '../src/deps/ibrowse/src/*',
+        '../src/deps/mbcs/src/*',
+        '../src/deps/cowboy/src/*',
+        '../src/deps/cowlib/src/*',
+        '../src/deps/ranch/src/*',
+        '../src/deps/jiffy/src/*',
+        '../src/deps/websocket_client/src/*',
+        '../src/deps/cberl/src/*',
+        '../src/deps/poolboy/src/*',
+        '../src/deps/recon_web/src/*',
+        '../src/deps/jsx/src/*',
+        '../src/deps/recon/src/*',
+        '../src/deps/timer2/src/*',
+        '../src/deps/parse_trans/src/*',
+        '../src/deps/trie/src/*',
+        '../src/deps/erlcloud/src/*',
+        '../src/deps/eini/src/*',
+        '../src/deps/lhttpc/src/*',
+        '../src/deps/base16/src/*',
+        '../src/deps/lager_logstash_backend/src/*',
+        '../src/deps/egeoip/src/*',
+        '../src/deps/luerl/src/*',
+        '../src/*',
+        '../src/data/*',
+        '../src/lib/*',
+        '../src/lib/mysql/*',
+        '../src/mod/*',
+        '../src/ctrl/*'
+    ]
+    ,[
+        debug_info
+        ,encrypt_debug_info
+        ,{parse_transform, lager_transform}
+        ,{lager_truncation_size, 1024}
+        ,{i, "../include"}
+        ,{i, "../src/deps/emysql/include"}
+        ,{i, "../src/deps/gproc/include"}
+        ,{i, "../src/deps/ibrowse/include"}
+        ,{i, "../src/deps/cowlib/include"}
+        ,{i, "../src/deps/cberl/include"}
+        ,{i, "../src/deps/recon_web/include"}
+        ,{i, "../src/deps/parse_trans/include"}
+        ,{i, "../src/deps/trie/src"}
+        ,{i, "../src/deps/erlcloud/include"}
+        ,{i, "../src/deps/lhttpc/include"}
+        ,{i, "../src/deps/egeoip/include"}
+        ,{outdir, "../ebin"}
+        ,{d, debug}
+        ,nowarn_unused_function
+        ,nowarn_unused_vars
+        %,{d, record_sql}
+        %,native
+        %,{hipe, [to_llvm]}
+    ]
+}.

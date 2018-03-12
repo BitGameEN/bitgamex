@@ -1,0 +1,3 @@
+-module(user_default).
+-include("record.hrl").
+-compile(export_all).

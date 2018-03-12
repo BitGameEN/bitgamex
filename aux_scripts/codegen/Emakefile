@@ -1,0 +1,20 @@
+{
+	[
+		'./data_autogen_cfg.erl',
+		'./data_autogen_run.erl',
+		'./data_autogen_log.erl',
+		'./data_autogen_usr.erl',
+		'../../src/lib/mysql/*',
+		'../../src/lib/util.erl'
+	]
+	,[
+		debug_info
+		,{parse_transform, lager_transform}
+		,{i, "../../include"}
+		,{i, "../../src/lib/mysql"}
+		,{i, "../../src/deps/egeoip/include"}
+		,{outdir, "../../ebin"}
+		,nowarn_unused_function
+		,nowarn_unused_vars
+	]
+}.

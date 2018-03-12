@@ -1,0 +1,86 @@
+// a2x: --dblatex-opts "-P latex.output.revhistory=0 -P doc.publisher.show=0 -P index.numbered=0"
+// a2x: -d book --attribute tabsize=4
+
+= Cowboy User Guide
+
+// REST: where should i handle bindings? init, probably. qs? in media type functions
+// REST: explain how a module per media type is good; module may be shared between client/server
+
+// @todo Put the list of RFCs and other documents supported somewhere.
+
+= Rationale
+
+include::modern_web.asciidoc[The modern Web]
+
+include::erlang_web.asciidoc[Erlang and the Web]
+
+= Introduction
+
+include::introduction.asciidoc[Introduction]
+
+include::getting_started.asciidoc[Getting started]
+
+// NEW! Flow diagram here
+// MERGE include::overview.asciidoc[Request overview]
+include::flow_diagram.asciidoc[Flow diagram]
+
+= Configuration
+
+include::listeners.asciidoc[Listeners]
+
+include::streams.asciidoc[Streams]
+
+include::routing.asciidoc[Routing]
+
+include::constraints.asciidoc[Constraints]
+
+= Handlers
+
+include::handlers.asciidoc[Handlers]
+
+include::loop_handlers.asciidoc[Loop handlers]
+
+include::static_files.asciidoc[Static files]
+
+= Request and response
+
+include::req.asciidoc[Request details]
+
+include::req_body.asciidoc[Reading the request body]
+
+include::resp.asciidoc[Sending a response]
+
+include::cookies.asciidoc[Using cookies]
+
+include::multipart.asciidoc[Multipart]
+
+= REST
+
+include::rest_principles.asciidoc[REST principles]
+
+include::rest_handlers.asciidoc[Handling REST requests]
+
+include::rest_flowcharts.asciidoc[REST flowcharts]
+
+include::resource_design.asciidoc[Designing a resource handler]
+
+= Websocket
+
+include::ws_protocol.asciidoc[The Websocket protocol]
+
+include::ws_handlers.asciidoc[Handling Websocket connections]
+
+= Internals
+
+// TODO: shouldn't be needed anymore?
+include::architecture.asciidoc[Architecture]
+
+// TODO: Move into Common scenarios or something; switch to streams
+include::broken_clients.asciidoc[Dealing with broken clients]
+
+include::middlewares.asciidoc[Middlewares]
+
+include::sub_protocols.asciidoc[Sub protocols]
+
+// TODO: they're gone
+include::hooks.asciidoc[Hooks]

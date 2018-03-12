@@ -1,0 +1,15 @@
+{
+    [
+        '../../src/deps/goldrush/src/*',
+        '../../src/deps/lager/src/*'
+    ]
+    ,[
+        debug_info
+        ,{i, "../../src/deps/lager/include"}
+        ,{outdir, "../../ebin"}
+        ,nowarn_unused_function
+        ,nowarn_unused_vars
+        %,native
+        %,{hipe, [o3]}
+    ]
+}.

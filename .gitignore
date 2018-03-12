@@ -1,0 +1,3 @@
+*.beam
+ebin/logs*
+ebin/global_run_data_*

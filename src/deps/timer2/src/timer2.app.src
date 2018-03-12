@@ -1,0 +1,17 @@
+{application, timer2,
+ [
+  {description, "TIMER2"},
+  {vsn, "1"},
+  {registered, [timer2_tab, timer2_ref_tab, timer2_pid_tab]},
+  {id, "TIMER2"},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  syntax_tools,
+                  compiler,
+                  lager,
+                  gproc
+                 ]},
+  {mod, { timer2_app, []}},
+  {env, []}
+ ]}.

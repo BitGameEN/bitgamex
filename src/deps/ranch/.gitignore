@@ -1,0 +1,12 @@
+.erlang.mk
+.ranch.plt
+deps
+doc/guide.pdf
+doc/html
+doc/man3
+doc/man7
+ebin
+examples/*/_rel
+examples/*/relx
+logs
+test/*.beam
