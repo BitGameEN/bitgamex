@@ -24,7 +24,7 @@ unlock(PlayerId, Cas) ->
     
 save(#usr_user_gold{player_id = PlayerId} = UserGold) ->
     OldUserGold = usr_user_gold:get_one(PlayerId),
-    GoldDelta = trunc(UserGold#usr_user_gold.gold - OldUserGold#usr_user_gold.gold),
+    GoldDelta = UserGold#usr_user_gold.gold - OldUserGold#usr_user_gold.gold,
     case GoldDelta of
         0 -> void;
         _ ->
