@@ -5,12 +5,14 @@
 -module(c_gatesvr).
 -export([api_login_game/1,
          api_bind_user/1,
-         api_get_game/1]).
+         api_get_game/1,
+         api_save_game/1]).
 
 -include("common.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
 -include("record_log_player_login.hrl").
+
 
 %% 登录游戏接口
 api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
@@ -138,4 +140,9 @@ api_bind_user([_User, BindType, _BindVal]) ->
 api_get_game([#usr_user{current_game_id = GameId, id = UserId} = User]) ->
     {ok, GameData, Balance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, false, []]),
     {ok, #{game_data => GameData, balance => Balance}}.
+
+%% 存盘接口
+api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData]) ->
+    {ok, GameData, Balance, FRes} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, save_game_data, [GameId, UserId, GameData]),
+    {ok, #{game_data => GameData, balance => Balance, f_res => FRes}}.
 

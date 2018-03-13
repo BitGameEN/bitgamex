@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 03/11/2018 22:21:04 PM
+ Date: 03/13/2018 11:08:23 AM
 */
 
 SET NAMES utf8;
@@ -26,6 +26,7 @@ CREATE TABLE `game` (
   `game_name` varchar(100) NOT NULL DEFAULT '' COMMENT '游戏名',
   `open_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '游戏状态，0-close, 1-open',
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
+  `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';
