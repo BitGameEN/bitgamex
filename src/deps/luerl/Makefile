@@ -17,7 +17,7 @@
 # Intermediaries from leex and yecc stay in ./src
 
 SRCDIR        =./src
-EBINDIR       =./ebin
+EBINDIR       =../../../ebin
 
 ESRCS  := $(notdir $(wildcard $(SRCDIR)/*.erl))
 XSRCS  := $(notdir $(wildcard $(SRCDIR)/*.xrl))

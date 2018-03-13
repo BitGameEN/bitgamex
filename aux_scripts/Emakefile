@@ -25,7 +25,6 @@
         '../src/deps/base16/src/*',
         '../src/deps/lager_logstash_backend/src/*',
         '../src/deps/egeoip/src/*',
-        '../src/deps/luerl/src/*',
         '../src/*',
         '../src/data/*',
         '../src/lib/*',

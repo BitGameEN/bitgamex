@@ -42,16 +42,26 @@ save_game_data(GameId, UserId, GameData) ->
 
     Now = util:unixtime(),
     #usr_game{balance_lua_f = BalanceLuaF} = usr_game:get_one(GameId),
+    #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
     DeltaBalance0 =
         case BalanceLuaF of
-            <<>> -> 1;
-            _ -> 0
+            <<>> -> 0;
+            _ ->
+                % 结算脚本函数，比如：
+                % function f(s0, s)
+                %   return 0.5
+                % end
+                ?DBG("balance_lua_f:~n~s~n", [BalanceLuaF]),
+                LuaState0 = luerl:init(),
+                {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
+                {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
+                V
         end,
+    % 对基础增量进行额外的规则调整
     DeltaBalance = DeltaBalance0,
     lib_user_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
     #usr_user_gold{gold = Balance} = UserGold = usr_user_gold:get_one(UserId),
     lib_user_gold:save(UserGold#usr_user_gold{gold = Balance + DeltaBalance}),
-    #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
     run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now}),
 
     run_data:trans_commit(),
