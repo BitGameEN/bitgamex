@@ -7,7 +7,8 @@ echo "please input mysql password:"
 read pwd
 DB_PWD=$pwd
 
-/usr/local/mysql/bin/mysql -h${DB_HOST} -u${DB_USR} -p${DB_PWD} << EOF
+
+/usr/bin/mysql -h${DB_HOST} -u${DB_USR} -p${DB_PWD} << EOF
 use bitgame_cfg;
 source ../../sql_scripts/bitgame_cfg.sql;
 EOF
