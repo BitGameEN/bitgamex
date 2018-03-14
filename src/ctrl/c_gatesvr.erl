@@ -7,7 +7,9 @@
          api_bind_user/1,
          api_get_game/1,
          api_save_game/1,
-         api_transfer_coin_in_game/1]).
+         api_transfer_coin_in_game/1,
+         api_bind_exchange_accid/1,
+         api_bind_wallet/1]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -97,7 +99,7 @@ api_bind_user([#usr_user{ios_gamecenter_id = CurrBindVal} = User, <<"gc_id">>, B
                     usr_user:set_one(User#usr_user{ios_gamecenter_id = BindVal, is_bind = 1, time = util:unixtime()}),
                     {ok, #{}};
                 _ ->
-                    throw({-1, <<"gc_id already bound by other">>})
+                    throw({-1, <<"gc_id already bound by others">>})
             end;
         _ ->
             case CurrBindVal =:= BindVal of
@@ -113,7 +115,7 @@ api_bind_user([#usr_user{google_id = CurrBindVal} = User, <<"gg_id">>, BindVal])
                     usr_user:set_one(User#usr_user{google_id = BindVal, is_bind = 1, time = util:unixtime()}),
                     {ok, #{}};
                 _ ->
-                    throw({-1, <<"gg_id already bound by other">>})
+                    throw({-1, <<"gg_id already bound by others">>})
             end;
         _ ->
             case CurrBindVal =:= BindVal of
@@ -129,7 +131,7 @@ api_bind_user([#usr_user{facebook_id = CurrBindVal} = User, <<"fb_id">>, BindVal
                     usr_user:set_one(User#usr_user{facebook_id = BindVal, is_bind = 1, time = util:unixtime()}),
                     {ok, #{}};
                 _ ->
-                    throw({-1, <<"fb_id already bound by other">>})
+                    throw({-1, <<"fb_id already bound by others">>})
             end;
         _ ->
             case CurrBindVal =:= BindVal of
@@ -174,4 +176,14 @@ api_transfer_coin_in_game([#usr_user{id = UserId} = Usr, #usr_user{id = DstUserI
     usr_gold_transfer:set_one(TransferR),
     UserGold = usr_user_gold:get_one(UserId),
     {ok, #{balance => UserGold#usr_user_gold.gold}}.
+
+%% 绑定 BIT.GAME 交易所账号的接口
+api_bind_exchange_accid([User, ExchangeAccId]) ->
+    usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
+    {ok, #{exchange_accid => ExchangeAccId}}.
+
+%% 绑定以太坊钱包地址的接口
+api_bind_wallet([User, WalletAddr]) ->
+    usr_user:set_one(User#usr_user{bind_wallet_addr = WalletAddr, time = util:unixtime()}),
+    {ok, #{wallet_addr => WalletAddr}}.
 

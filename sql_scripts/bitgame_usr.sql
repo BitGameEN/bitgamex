@@ -108,7 +108,7 @@ CREATE TABLE `user` (
   `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '玩家状态（0-正常，1-封禁）',
   `forbid_login_endtime` int(11) NOT NULL DEFAULT '0' COMMENT '封号截止时间',
   `bind_xchg_accid` varchar(100) NOT NULL DEFAULT '' COMMENT '绑定的交易所账号id',
-  `bind_wallet_addr` varchar(5) NOT NULL DEFAULT '' COMMENT '绑定的钱包地址',
+  `bind_wallet_addr` varchar(50) NOT NULL DEFAULT '' COMMENT '绑定的钱包地址',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`id`),
   UNIQUE KEY `org_device_id` (`org_device_id`) USING BTREE,
