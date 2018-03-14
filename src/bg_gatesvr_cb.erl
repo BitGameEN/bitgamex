@@ -196,6 +196,10 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     DstUid = binary_to_integer(DstUidBin),
     Amount = binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
+    case Uid =:= DstUid of
+        true -> throw({-1, <<"wrong dst uid">>});
+        false -> void
+    end,
     GameKey =
         case usr_game:get_one(GameId) of
             #usr_game{open_status = OpenStatus, game_key = GKey} ->
@@ -218,7 +222,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     end,
     DstUser = usr_user:get_one(DstUid),
     case is_record(DstUser, usr_user) of
-        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong dst uid">>});
+        false -> throw({-1, <<"wrong dst uid">>});
         true -> void
     end,
     c_gatesvr:api_transfer_coin_in_game([User, DstUser, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);

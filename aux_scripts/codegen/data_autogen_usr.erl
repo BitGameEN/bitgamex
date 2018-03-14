@@ -31,6 +31,7 @@ mysql_halt([Sql, Reason]) ->
 run() ->
     init_db(),
     gen("game"),
+    gen("global_config"),
     gen("user", true),
     gen("user_gold"),
     gen("gold_transfer"),

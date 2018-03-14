@@ -11,6 +11,7 @@
 
 -include("common.hrl").
 -include("gameConfig.hrl").
+-include("gameConfigGlobalKey.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
 -include("record_usr_gold_transfer.hrl").
@@ -153,7 +154,7 @@ api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData
 api_transfer_coin_in_game([#usr_user{id = UserId} = Usr, #usr_user{id = DstUserId} = DstUsr, Amount, ReceiptData]) ->
     lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
     lib_user_gold:add_gold(UserId, -Amount),
-    lib_user_gold:add_gold(DstUserId, Amount),
+    lib_user_gold:add_gold(DstUserId, Amount * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME))),
     NowDateTime = util:now_datetime_str(),
     TransactionId = integer_to_list(UserId) ++ "_" ++ integer_to_list(DstUserId) ++ "_" ++ integer_to_list(util:longunixtime()),
     TransferR = #usr_gold_transfer{

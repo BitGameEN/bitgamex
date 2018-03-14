@@ -1,3 +1,11 @@
 -module(user_default).
 -include("record.hrl").
+-include("record_usr_user.hrl").
+-include("record_usr_user_gold.hrl").
+-include("record_usr_gold_transfer.hrl").
+-include("record_usr_global_config.hrl").
+-include("record_usr_game.hrl").
+-include("record_run_role.hrl").
+-include("record_log_player_login.hrl").
+-include("record_log_gold.hrl").
 -compile(export_all).

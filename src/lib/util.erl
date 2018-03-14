@@ -8,6 +8,7 @@
 -module(util).
 -export([
         launch_log/2,
+        zero_if_negative/1,
         now_datetime/0,
         now_datetime_str/0,
         unixtime/0,
@@ -58,6 +59,15 @@ launch_log(FormatStr, Args) ->
     NewLogs = Logs ++ "(" ++ integer_to_list(ElapsedSeconds) ++ ")" ++ lists:flatten(io_lib:format(FormatStr, Args)),
     lib_global_data:write_mem_only(<<"launch_logs">>, NewLogs),
     ok.
+
+%% 如果为负，则取0
+zero_if_negative(Num) ->
+    if
+        Num < 0 ->
+            0;
+        true ->
+            Num
+    end.
 
 %% UTC-0点的datetime
 now_datetime() ->
