@@ -5,7 +5,7 @@ cd ..
 erl -pa ../ebin -make
 cd ../src/deps/luerl
 make
-cd ../src/deps/jiffy
+cd ../jiffy
 make
 cp priv/jiffy.so ../../../priv
 cd ../cberl
