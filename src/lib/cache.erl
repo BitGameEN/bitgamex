@@ -54,7 +54,7 @@ get_and_lock(Key) ->
         {Key, Cas, Val} -> {true, Cas, Val};
         {Key, {error, key_enoent}} -> false;
         {Key, {error, etmpfail}} ->
-            timer:sleep(500),
+            timer:sleep(100),
             get_and_lock(Key);
         {Key, {error, Err}} ->
             throw({?ERRNO_READ_CACHE, <<"read cache error">>}),

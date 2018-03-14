@@ -90,4 +90,5 @@
 -define(ERRNO_GAME_NOT_OPEN, -993). % 游戏未开放
 -define(ERRNO_READ_CACHE, -992). % 读缓存失败
 -define(ERRNO_NO_RPC_SERVER, -991). % 不存在rpc服务器
+-define(ERRNO_GOLD_NOT_ENOUGH, -990). % 金币不足
 

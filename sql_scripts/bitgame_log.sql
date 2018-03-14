@@ -30,7 +30,7 @@ CREATE TABLE `gold` (
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
   `drain_type` varchar(50) NOT NULL DEFAULT '' COMMENT '来源类型',
   `drain_id` int(11) NOT NULL DEFAULT '0' COMMENT '来源相关id，比如买道具，则为道具id',
-  `drain_count` int(11) NOT NULL DEFAULT '0' COMMENT '来源相关id对应的数量，比如买道具，买了多少个',
+  `drain_count` double NOT NULL DEFAULT '0' COMMENT '来源相关id对应的数量，比如买道具，买了多少个',
   `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '时间戳',
   `call_flow` varchar(256) NOT NULL DEFAULT '' COMMENT '调用上下文',
   PRIMARY KEY (`id`),

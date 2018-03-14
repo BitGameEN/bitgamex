@@ -99,11 +99,8 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         PlayerId = list_to_integer(GameUidStr), ?ASSERT(PlayerId > 0),
         Amount = list_to_float(AmountStr), ?ASSERT(Amount > 0),
         Time = list_to_integer(TimeStr), ?ASSERT(Time > 0),
-    
+
         put(transaction_id, TransactionId),
-        put(player_id, PlayerId),
-        {true, Cas, UserGold} = lib_user_gold:lock(PlayerId),
-        put(lock_cas, Cas),
 
         Usr = usr_user:get_one(PlayerId),
         TransferAmount = case usr_gold_transfer:get_gold_transfer_gids_by_transaction_id_and_transaction_type({TransactionId, ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME}) of
@@ -150,14 +147,13 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         run_data:trans_begin(),
         % 加金币
         lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME, TransferAmount),
-        OldGold = UserGold#usr_user_gold.gold,
-        NewGold = OldGold + TransferAmount,
-        lib_user_gold:save(UserGold#usr_user_gold{gold = NewGold, time = util:unixtime()}),
+        lib_user_gold:add_gold(PlayerId, TransferAmount),
         % 更新transfer记录
         lib_user_gold_transfer:update_transfer_log(?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, TransactionId, {ok, TransferAmount}),
         run_data:trans_commit(),
 
-        cowboy_req:reply(200, #{}, lib_http:reply_body_succ(#{balance => NewGold}), Req)
+        UserGold = usr_user_gold:get_one(PlayerId),
+        cowboy_req:reply(200, #{}, lib_http:reply_body_succ(#{balance => UserGold#usr_user_gold.gold}), Req)
 
     catch
         throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
@@ -176,7 +172,6 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
             lib_user_gold_transfer:update_transfer_log(?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, get(transaction_id), {error, ErrMsg}),
             throw({?ERRNO_EXCEPTION, ErrMsg})
     after
-        lib_user_gold:unlock(get(player_id), get(lock_cas)),
         ?PRINT_END()
     end;
 

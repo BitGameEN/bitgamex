@@ -60,12 +60,12 @@ save_game_data(GameId, UserId, GameData) ->
     % 对基础增量进行额外的规则调整
     DeltaBalance = DeltaBalance0,
     lib_user_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
-    #usr_user_gold{gold = Balance} = UserGold = usr_user_gold:get_one(UserId),
-    lib_user_gold:save(UserGold#usr_user_gold{gold = Balance + DeltaBalance}),
+    lib_user_gold:add_gold(UserId, DeltaBalance),
     run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now}),
 
     run_data:trans_commit(),
-    {ok, GameData, Balance + DeltaBalance, DeltaBalance0}
+    UserGold = usr_user_gold:get_one(UserId),
+    {ok, GameData, UserGold#usr_user_gold.gold, DeltaBalance0}
 
   catch
     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
