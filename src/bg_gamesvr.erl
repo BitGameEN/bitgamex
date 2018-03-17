@@ -11,7 +11,6 @@ start([Ip, Sid]) ->
     ok = start_disperse([Ip, Sid]),
     ok = start_kernel(),
     ok = start_rand(),
-    ok = start_uuid_factory(),
     util:launch_log("<==== game server ready.~n~n~n", []),
     ok.
 
@@ -43,15 +42,5 @@ start_rand() ->
                 {mod_rand,
                 {mod_rand, start_link,[]},
                 permanent, 10000, supervisor, [mod_rand]}),
-    ok.
-
-%%唯一id生成器
-start_uuid_factory() ->
-    util:launch_log("====> start_uuid_factory...~n", []),
-    {ok,_} = supervisor:start_child(
-                bg_gamesvr_sup,
-                {uuid_factory,
-                {uuid_factory, start_link, []},
-                permanent, 10000, supervisor, [uuid_factory]}),
     ok.
 

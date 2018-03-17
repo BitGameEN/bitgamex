@@ -9,7 +9,9 @@
          api_save_game/1,
          api_transfer_coin_in_game/1,
          api_bind_exchange_accid/1,
-         api_bind_wallet/1]).
+         api_bind_wallet/1,
+         api_transfer_coin_to_exchange/1,
+         api_transfer_coin_to_wallet/1]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -189,11 +191,13 @@ api_bind_wallet([User, WalletAddr]) ->
 
 %% 转账游戏币给绑定的交易所账号的接口
 api_transfer_coin_to_exchange([#usr_user{id = UserId} = User, Amount, ReceiptData]) ->
-    {ok, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange3, [User, Amount, ReceiptData]),
+    {ok, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange, [User, Amount, ReceiptData]),
     UserGold = usr_user_gold:get_one(UserId),
     {ok, #{balance => UserGold#usr_user_gold.gold, exchange_balance => XchgBalance}}.
 
 %% 转账游戏币给绑定的钱包的接口
 api_transfer_coin_to_wallet([#usr_user{id = UserId} = User, Amount, ReceiptData]) ->
-    ok.
+    {ok, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [User, Amount, ReceiptData]),
+    UserGold = usr_user_gold:get_one(UserId),
+    {ok, #{balance => UserGold#usr_user_gold.gold, exchange_balance => XchgBalance}}.
 
