@@ -2,3 +2,4 @@
 ebin/logs*
 ebin/global_run_data_*
 ebin/erl_crash.dump
+ebin/http_requests_*
