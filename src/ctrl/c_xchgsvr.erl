@@ -76,18 +76,10 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
     % 然后，base64、url编码
     Sign = util:url_encode(base64:encode(Sign0)),
     ParamData = util:url_encode(base64:encode(Params1)),
+    Params = [{<<"param_data">>, ParamData}, {<<"sign">>, Sign}],
     % 发送，并处理结果
-    case do_transfer_gold_to_exchange(TransferType, ParamData, Sign) of
-        {error, ErrNo, ErrMsg} = Rs ->
-            case ErrNo of
-                ?ERRNO_HTTP_REQ_TIMEOUT ->
-                    % 超时情况下不能确认是否已经发到对端并处理完成，所以不能返回游戏币
-                    void;
-                _ -> lib_user_gold:add_gold(UserId, Amount0) % 返回游戏币
-            end,
-            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, Rs),
-            throw({ErrNo, ErrMsg});
-        JsonObject ->
+    Callback =
+        fun(JsonObject) ->
             case lists:keyfind(<<"succ">>, 1, JsonObject) of
                 {_, 0} -> % 失败
                     lib_user_gold:add_gold(UserId, Amount0), % 返回游戏币
@@ -110,16 +102,27 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
                     lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, Amount0}),
                     {ok, Balance}
             end
-    end.
-
-do_transfer_gold_to_exchange(TransferType, ParamData, Sign) ->
-    Params = [{<<"param_data">>, ParamData}, {<<"sign">>, Sign}],
-    JsonString = jsx:encode(Params),
+        end,
     Url = case TransferType of
               ?GOLD_TRANSFER_TYPE_GAME_TO_XCHG -> ?TRANSFER_TO_XCHG_URL;
               ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET -> ?TRANSFER_TO_WALLET_URL
           end,
-    case ibrowse:send_req(Url, [?JSON_CONTENT], get, JsonString, ?HTTP_CLIENT_OPTIONS, ?HTTP_CLIENT_TIMEOUT) of
+    case do_transfer_gold_to_exchange(Url, Params) of
+        {error, ErrNo, ErrMsg} = Rs ->
+            case ErrNo of
+                ?ERRNO_HTTP_REQ_TIMEOUT ->
+                    % 超时情况下不能确认是否已经发到对端并处理完成，所以不能返回游戏币
+                    httpc_proxy:queue_request(Url, get, Params, Callback);
+                _ -> lib_user_gold:add_gold(UserId, Amount0) % 返回游戏币
+            end,
+            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, Rs),
+            throw({ErrNo, ErrMsg});
+        JsonObject ->
+            Callback(JsonObject)
+    end.
+
+do_transfer_gold_to_exchange(Url, Params) ->
+    case ibrowse:send_req(Url, [?JSON_CONTENT], get, jsx:encode(Params), ?HTTP_CLIENT_OPTIONS, ?HTTP_CLIENT_TIMEOUT) of
         {ok, Status, Head, Body} ->
             case Status of
                 "200" ->

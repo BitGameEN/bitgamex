@@ -39,6 +39,14 @@ init([Ip, ServerId]) ->
                 10000,
                 supervisor,
                 [uuid_factory]
+            },
+            {
+                httpc_proxy,
+                {httpc_proxy, start_link, []},
+                permanent,
+                10000,
+                supervisor,
+                [httpc_proxy]
             }
         ],
     {ok,
