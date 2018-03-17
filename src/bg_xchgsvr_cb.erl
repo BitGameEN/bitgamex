@@ -60,6 +60,8 @@ action(<<"GET">>, undefined, Req) ->
 
 action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
     ?PRINT_BEGIN(),
+    TransferType = ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME,
+    TransactionType = ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME,
     try
         ?PRINT("url=~s~n", [iolist_to_binary(cowboy_req:uri(Req, #{}))]),
         #{param_data := ParamData, sign := Sign0} = cowboy_req:match_qs([param_data, sign], Req),
@@ -101,14 +103,17 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         Time = list_to_integer(TimeStr), ?ASSERT(Time > 0),
 
         put(transaction_id, TransactionId),
-
         Usr = usr_user:get_one(PlayerId),
-        TransferAmount = case usr_gold_transfer:get_gold_transfer_gids_by_transaction_id_and_transaction_type({TransactionId, ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME}) of
+
+        {true, Cas} = lib_user_gold_transfer:lock(TransactionType, TransactionId),
+        put(user_gold_transfer_lock, {TransactionType, TransactionId, Cas}),
+
+        TransferAmount = case usr_gold_transfer:get_gold_transfer_gids_by_transaction_id_and_transaction_type({TransactionId, TransactionType}) of
             [] ->
                 NowDateTime = util:now_datetime_str(),
                 TransferR = #usr_gold_transfer{
-                                type = ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME,
-                                transaction_type = ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME,
+                                type = TransferType,
+                                transaction_type = TransactionType,
                                 transaction_id = TransactionId,
                                 receipt = ReceiptData,
                                 player_id = PlayerId,
@@ -146,11 +151,12 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
 
         run_data:trans_begin(),
         % 加金币
-        lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME, TransferAmount),
+        lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, TransferAmount),
         lib_user_gold:add_gold(PlayerId, TransferAmount),
         % 更新transfer记录
-        lib_user_gold_transfer:update_transfer_log(?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, TransactionId, {ok, TransferAmount}),
+        lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, TransferAmount}),
         run_data:trans_commit(),
+        unlock(),
 
         UserGold = usr_user_gold:get_one(PlayerId),
         cowboy_req:reply(200, #{}, lib_http:reply_body_succ(#{balance => UserGold#usr_user_gold.gold}), Req)
@@ -161,22 +167,31 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
             ?ERR("exchange cb exception:~nerr_msg=~p,url=~p~n", [ErrMsg, iolist_to_binary(cowboy_req:uri(Req, #{}))]),
             case ErrNo of
                 -1 -> void;
-                _ ->
-                    lib_user_gold_transfer:update_transfer_log(?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, get(transaction_id), {error, ErrMsg})
+                _ -> lib_user_gold_transfer:update_transfer_log(TransactionType, get(transaction_id), {error, ErrNo, ErrMsg})
             end,
+            unlock(),
+            ?PRINT_END(),
             throw({ErrNo, ErrMsg});
         _:ExceptionErr ->
             run_data:trans_rollback(),
             ?ERR("exchange cb exception:~nerr_msg=~p,url=~p~nstack=~p~n", [ExceptionErr, iolist_to_binary(cowboy_req:uri(Req, #{})), erlang:get_stacktrace()]),
             ErrMsg = ?T2B(ExceptionErr),
-            lib_user_gold_transfer:update_transfer_log(?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, get(transaction_id), {error, ErrMsg}),
+            lib_user_gold_transfer:update_transfer_log(TransactionType, get(transaction_id), {error, ?ERRNO_EXCEPTION, ErrMsg}),
+            unlock(),
+            ?PRINT_END(),
             throw({?ERRNO_EXCEPTION, ErrMsg})
-    after
-        ?PRINT_END()
     end;
 
 action(_, Action, Req) ->
     cowboy_req:reply(405, #{}, lib_http:reply_body_fail(Action, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>), Req).
+
+% 解锁
+unlock() ->
+    case get(user_gold_transfer_lock) of
+        {TransType, TransId, CasVal} ->
+            lib_user_gold_transfer:unlock(TransType, TransId, CasVal);
+        _ -> void
+    end.
 
 decrypt_private(ParamByte, RSAPriKey) ->
     decrypt_private(ParamByte, RSAPriKey, <<>>).

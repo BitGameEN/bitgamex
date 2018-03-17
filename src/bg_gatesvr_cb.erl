@@ -303,6 +303,100 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
     end,
     c_gatesvr:api_bind_wallet([User, WalletAddr]);
 
+% https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
+action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("transfer_coin_to_exchange: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
+        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    Amount = binary_to_float(AmountBin),
+    %Time = binary_to_integer(TimeBin),
+    case Amount < 0.00000001 of
+        true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
+        false -> void
+    end,
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    case BindXchgAccId of
+        <<>> -> throw({-1, <<"no exchange account id bound">>});
+        _ -> void
+    end,
+    c_gatesvr:api_transfer_coin_to_exchange([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+
+% https://api.bitgamex.com/?a=transfer_coin_to_wallet&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
+action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("transfer_coin_to_wallet: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
+        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    Amount = binary_to_float(AmountBin),
+    %Time = binary_to_integer(TimeBin),
+    case Amount < 0.00000001 of
+        true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
+        false -> void
+    end,
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    case BindXchgAccId of
+        <<>> -> throw({-1, <<"no exchange account id bound">>});
+        _ -> void
+    end,
+    case BindWalletAddr of
+        <<>> -> throw({-2, <<"no wallet address bound">>});
+        _ -> void
+    end,
+    c_gatesvr:api_transfer_coin_to_wallet([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+
 action(_, Action, Req) ->
     cowboy_req:reply(405, #{}, lib_http:reply_body_fail(Action, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>), Req).
 

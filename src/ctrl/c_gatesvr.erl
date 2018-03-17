@@ -153,7 +153,7 @@ api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData
     {ok, #{game_data => GameData, balance => Balance, f_res => FRes}}.
 
 %% 转账游戏币给其他玩家的接口
-api_transfer_coin_in_game([#usr_user{id = UserId} = Usr, #usr_user{id = DstUserId} = DstUsr, Amount, ReceiptData]) ->
+api_transfer_coin_in_game([#usr_user{id = UserId} = User, #usr_user{id = DstUserId} = DstUser, Amount, ReceiptData]) ->
     lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
     lib_user_gold:add_gold(UserId, -Amount),
     lib_user_gold:add_gold(DstUserId, Amount * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME))),
@@ -165,12 +165,12 @@ api_transfer_coin_in_game([#usr_user{id = UserId} = Usr, #usr_user{id = DstUserI
                     transaction_id = TransactionId,
                     receipt = ReceiptData,
                     player_id = UserId,
-                    device_id = Usr#usr_user.device_id,
+                    device_id = User#usr_user.device_id,
                     wallet_addr = <<>>,
                     gold = Amount,
                     status = 1,
                     error_tag = <<>>,
-                    receive_game_id = Usr#usr_user.current_game_id,
+                    receive_game_id = User#usr_user.current_game_id,
                     receive_time = NowDateTime,
                     update_time = NowDateTime},
     usr_gold_transfer:set_one(TransferR),
@@ -186,4 +186,14 @@ api_bind_exchange_accid([User, ExchangeAccId]) ->
 api_bind_wallet([User, WalletAddr]) ->
     usr_user:set_one(User#usr_user{bind_wallet_addr = WalletAddr, time = util:unixtime()}),
     {ok, #{wallet_addr => WalletAddr}}.
+
+%% 转账游戏币给绑定的交易所账号的接口
+api_transfer_coin_to_exchange([#usr_user{id = UserId} = User, Amount, ReceiptData]) ->
+    {ok, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange3, [User, Amount, ReceiptData]),
+    UserGold = usr_user_gold:get_one(UserId),
+    {ok, #{balance => UserGold#usr_user_gold.gold, exchange_balance => XchgBalance}}.
+
+%% 转账游戏币给绑定的钱包的接口
+api_transfer_coin_to_wallet([#usr_user{id = UserId} = User, Amount, ReceiptData]) ->
+    ok.
 

@@ -12,9 +12,10 @@
 		receipt = <<"">>, % 收据
 		player_id = 0, % 玩家id
 		device_id = <<"">>, % device id
+		xchg_accid = <<"">>, % 交易所账号id
 		wallet_addr = <<"">>, % 钱包地址
 		gold = 0, % 金币
-		status = 0, % 回调状态，0 - 未回调，1 - 已成功回调
+		status = 0, % 回调状态，0 - 未回调，1 - 已成功回调，-1 - 回调返回失败结果
 		error_tag = <<"0">>, % 回调未成功时的错误号
 		receive_game_id = 0, % 收到时的游戏id
 		receive_time = 0, % 收到时间

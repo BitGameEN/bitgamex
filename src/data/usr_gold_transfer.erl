@@ -12,7 +12,7 @@ get_one(Id = Id) ->
 		{true, _Cas, Val} ->
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_USR, <<"select id,type,transaction_type,transaction_id,receipt,player_id,device_id,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time from gold_transfer where id=?">>, [Id]) of
+			case db_esql:get_row(?DB_USR, <<"select id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time from gold_transfer where id=?">>, [Id]) of
 				[] -> [];
 				Row ->
 					R = build_record_from_row(Row),
@@ -87,6 +87,7 @@ set_one(R0) when is_record(R0, usr_gold_transfer) ->
 				receipt = Receipt,
 				player_id = Player_id,
 				device_id = Device_id,
+				xchg_accid = Xchg_accid,
 				wallet_addr = Wallet_addr,
 				gold = Gold,
 				status = Status,
@@ -95,8 +96,8 @@ set_one(R0) when is_record(R0, usr_gold_transfer) ->
 				receive_time = Receive_time,
 				update_time = Update_time
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time) values(~p,~p,~p,'~s','~s',~p,'~s','~s',~p,~p,'~s',~p,~p,~p); select last_insert_id()">>,
-				[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time])),
+			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time) values(~p,~p,~p,'~s','~s',~p,'~s','~s','~s',~p,~p,'~s',~p,~p,~p); select last_insert_id()">>,
+				[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time])),
 			R = R0#usr_gold_transfer{key_id = Insert_id, id = Insert_id},
 			cache:set(cache_key(R#usr_gold_transfer.key_id), R),
 			R#usr_gold_transfer.key_id
@@ -130,6 +131,7 @@ syncdb(R) when is_record(R, usr_gold_transfer) ->
 		receipt = Receipt,
 		player_id = Player_id,
 		device_id = Device_id,
+		xchg_accid = Xchg_accid,
 		wallet_addr = Wallet_addr,
 		gold = Gold,
 		status = Status,
@@ -138,10 +140,10 @@ syncdb(R) when is_record(R, usr_gold_transfer) ->
 		receive_time = Receive_time,
 		update_time = Update_time
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)">>,
-		[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]).
+	db_esql:execute(?DB_USR, <<"replace into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold,status,error_tag,receive_game_id,receive_time,update_time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)">>,
+		[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]).
 
-build_record_from_row([Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]) ->
+build_record_from_row([Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]) ->
 	#usr_gold_transfer{
 		key_id = Id,
 		id = Id,
@@ -151,6 +153,7 @@ build_record_from_row([Id, Type, Transaction_type, Transaction_id, Receipt, Play
 		receipt = Receipt,
 		player_id = Player_id,
 		device_id = Device_id,
+		xchg_accid = Xchg_accid,
 		wallet_addr = Wallet_addr,
 		gold = Gold,
 		status = Status,

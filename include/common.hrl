@@ -91,4 +91,7 @@
 -define(ERRNO_READ_CACHE, -992). % 读缓存失败
 -define(ERRNO_NO_RPC_SERVER, -991). % 不存在rpc服务器
 -define(ERRNO_GOLD_NOT_ENOUGH, -990). % 金币不足
+-define(ERRNO_HTTP_REQ_FAILED, -989). % 请求失败
+-define(ERRNO_HTTP_REQ_TIMEOUT, -988). % 请求超时
+-define(ERRNO_UNIDENTIFIED, -987). % 未确定的错误
 

@@ -137,10 +137,10 @@ floor(X) ->
 
 %% convert float to string
 f2s(N) when is_integer(N) ->
-    integer_to_list(N) ++ ".00000000";
+    list_to_binary(integer_to_list(N) ++ ".00000000");
 f2s(F) when is_float(F) ->
     [A] = io_lib:format("~.8f", [F]),
-    A.
+    list_to_binary(A).
 
 %% 在List中的每两个元素之间插入一个分隔符
 implode(_S, []) ->

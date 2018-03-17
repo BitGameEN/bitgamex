@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 03/13/2018 11:08:23 AM
+ Date: 03/17/2018 11:04:39 AM
 */
 
 SET NAMES utf8;
@@ -54,9 +54,10 @@ CREATE TABLE `gold_transfer` (
   `receipt` varchar(20480) NOT NULL DEFAULT '' COMMENT '收据',
   `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
   `device_id` varchar(50) NOT NULL DEFAULT '' COMMENT 'device id',
+  `xchg_accid` varchar(100) NOT NULL DEFAULT '' COMMENT '交易所账号id',
   `wallet_addr` varchar(50) NOT NULL DEFAULT '' COMMENT '钱包地址',
   `gold` double NOT NULL DEFAULT '0' COMMENT '金币',
-  `status` int(11) NOT NULL DEFAULT '0' COMMENT '回调状态，0 - 未回调，1 - 已成功回调',
+  `status` int(11) NOT NULL DEFAULT '0' COMMENT '回调状态，0 - 未回调，1 - 已成功回调，-1 - 回调返回失败结果',
   `error_tag` varchar(512) NOT NULL DEFAULT '0' COMMENT '回调未成功时的错误号',
   `receive_game_id` int(11) NOT NULL DEFAULT '0' COMMENT '收到时的游戏id',
   `receive_time` datetime NOT NULL COMMENT '收到时间',

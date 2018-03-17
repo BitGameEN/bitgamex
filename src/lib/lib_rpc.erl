@@ -14,7 +14,14 @@ rpc(?SVRTYPE_GAME, M, F, A) ->
             throw({?ERRNO_NO_RPC_SERVER, <<"no game server">>});
         Servers ->
             Server = get_rand_svr(Servers),
-            rpc:call(Server#server.node, M, F, A)
+            case rpc:call(Server#server.node, M, F, A) of
+                {badrpc, Reason} ->
+                    ?ERR("rpc exception:~nerr_msg=~p~n", [Reason]),
+                    throw({?ERRNO_EXCEPTION, ?T2B(Reason)});
+                {ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+                    throw({ErrNo, ErrMsg});
+                Ret -> Ret
+            end
     end;
 rpc(?SVRTYPE_XCHG, M, F, A) ->
     case mod_disperse:xchgsvr_list() of
@@ -22,7 +29,14 @@ rpc(?SVRTYPE_XCHG, M, F, A) ->
             throw({?ERRNO_NO_RPC_SERVER, <<"no xchg server">>});
         Servers ->
             Server = get_rand_svr(Servers),
-            rpc:call(Server#server.node, M, F, A)
+            case rpc:call(Server#server.node, M, F, A) of
+                {badrpc, Reason} ->
+                    ?ERR("rpc exception:~nerr_msg=~p~n", [Reason]),
+                    throw({?ERRNO_EXCEPTION, ?T2B(Reason)});
+                {ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+                    throw({ErrNo, ErrMsg});
+                Ret -> Ret
+            end
     end.
 
 get_rand_svr([Server]) ->

@@ -31,6 +31,14 @@ init([Ip, ServerId]) ->
                 10000,
                 supervisor,
                 [mod_disperse]
+            },
+            {
+                uuid_factory,
+                {uuid_factory, start_link, []},
+                permanent,
+                10000,
+                supervisor,
+                [uuid_factory]
             }
         ],
     {ok,
@@ -39,3 +47,4 @@ init([Ip, ServerId]) ->
             Children
         }
     }.
+
