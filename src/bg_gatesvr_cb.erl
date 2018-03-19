@@ -27,8 +27,8 @@ init(Req, Opts) ->
         end,
     {ok, Req2, Opts}.
 
-action(<<"GET">>, undefined, Req) ->
-    cowboy_req:reply(400, #{}, lib_http:reply_body_fail(undefined, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>), Req);
+action(_, undefined, _Req) ->
+    throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
 
 % https://api.bitgamex.com/?a=login_game&uid=xx&game_id=xx&device_id=xx&time=xx&sign=xx
 action(<<"GET">>, <<"login_game">> = Action, Req) ->
@@ -397,6 +397,6 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     end,
     c_gatesvr:api_transfer_coin_to_wallet([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
-action(_, Action, Req) ->
-    cowboy_req:reply(405, #{}, lib_http:reply_body_fail(Action, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>), Req).
+action(_, _Action, _Req) ->
+    throw({405, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
 
