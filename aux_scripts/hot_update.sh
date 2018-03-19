@@ -4,7 +4,7 @@ echo "####################################################################"
 echo "getting source code......"
 echo "####################################################################"
 dir0=`pwd`
-cd ../..
+cd ..
 git pull
 cd $dir0
 
@@ -18,3 +18,4 @@ echo "hot updating......"
 echo "####################################################################"
 erl_call -a 'u u' -name gate100000@127.0.0.1 -c bit_gamex_1
 erl_call -a 'u u' -name game200000@127.0.0.1 -c bit_gamex_2
+erl_call -a 'u u' -name xchg300000@127.0.0.1 -c bit_gamex_3
