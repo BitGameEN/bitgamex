@@ -43,20 +43,20 @@ init(Req, Opts) ->
                 action(Method, Action, Req)
             catch
                 throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
-                    cowboy_req:reply(500, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
+                    cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
                 _:ExceptionErr ->
                     ?ERR("bg_xchgsvr_cb exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
-                    cowboy_req:reply(500, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
+                    cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
             end;
         false ->
             ?ERR("exchange cb exception: ip rejected, ~p~n", [PeerIp0]),
             #{action := Action} = cowboy_req:match_qs([a], Req),
-            cowboy_req:reply(403, #{}, lib_http:reply_body_fail(Action, ?ERRNO_IP_BLOCKED, <<"ip blocked">>), Req)
+            cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_IP_BLOCKED, <<"ip blocked">>), Req)
     end,
     {ok, Req2, Opts}.
 
 action(<<"GET">>, undefined, Req) ->
-    cowboy_req:reply(400, #{}, lib_http:reply_body_fail(undefined, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>), Req);
+    cowboy_req:reply(200, #{}, lib_http:reply_body_fail(undefined, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>), Req);
 
 action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
     ?PRINT_BEGIN(),
@@ -183,7 +183,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
     end;
 
 action(_, Action, Req) ->
-    cowboy_req:reply(405, #{}, lib_http:reply_body_fail(Action, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>), Req).
+    cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>), Req).
 
 % 解锁
 unlock() ->

@@ -18,17 +18,17 @@ init(Req, Opts) ->
             cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
         catch
             throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
-                cowboy_req:reply(500, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
+                cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
             throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
                 cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
             _:ExceptionErr ->
                 ?ERR("bg_gatesvr_cb exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
-                cowboy_req:reply(500, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
+                cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
         end,
     {ok, Req2, Opts}.
 
 action(_, undefined, _Req) ->
-    throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+    throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
 
 % https://api.bitgamex.com/?a=login_game&uid=xx&game_id=xx&device_id=xx&time=xx&sign=xx
 action(<<"GET">>, <<"login_game">> = Action, Req) ->
@@ -48,7 +48,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, DeviceId0, TimeBin0, Sign0, DeviceModel0, OsType0, OsVer0, Lang0, OrgDeviceId0, GCId0, GGId0, FBId0],
     [UidBin, GameIdBin, DeviceId, TimeBin, Sign, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, DeviceId, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -81,7 +81,7 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, BindType0, BindVal0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, BindType, BindVal, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, BindType, BindVal, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -117,7 +117,7 @@ action(<<"GET">>, <<"get_game">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0],
     [UidBin, GameIdBin, Token] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -152,7 +152,7 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, GameData0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, GameData, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, GameData, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -188,7 +188,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, DstUidBin0, AmountBin0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, DstUidBin, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, DstUidBin, AmountBin, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -239,7 +239,7 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, ExchangeAccId0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, ExchangeAccId, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, ExchangeAccId, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -275,7 +275,7 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, WalletAddr0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, WalletAddr, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, WalletAddr, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -311,7 +311,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -356,7 +356,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
     [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
-        true -> throw({400, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
@@ -398,5 +398,5 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     c_gatesvr:api_transfer_coin_to_wallet([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 action(_, _Action, _Req) ->
-    throw({405, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
+    throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
 
