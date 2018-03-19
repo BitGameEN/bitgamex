@@ -18,6 +18,7 @@
         clamp/3,
         ceil/1,
         floor/1,
+        binary_to_float/1,
         f2s/1,
         implode/2,
         implode/3,
@@ -133,6 +134,13 @@ floor(X) ->
     case (X < T) of
         true -> T - 1;
         _ -> T
+    end.
+
+binary_to_float(Bin) ->
+    case erlang:binary_to_float(Bin) of
+        {'EXIT',{badarg,_}} ->
+            binary_to_integer(Bin);
+        Float -> Float
     end.
 
 %% convert float to string

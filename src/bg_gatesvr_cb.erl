@@ -194,7 +194,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     Uid = binary_to_integer(UidBin),
     GameId = binary_to_integer(GameIdBin),
     DstUid = binary_to_integer(DstUidBin),
-    Amount = binary_to_float(AmountBin),
+    Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case Uid =:= DstUid of
         true -> throw({-1, <<"wrong dst uid">>});
@@ -316,7 +316,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
     end,
     Uid = binary_to_integer(UidBin),
     GameId = binary_to_integer(GameIdBin),
-    Amount = binary_to_float(AmountBin),
+    Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case Amount < 0.00000001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
@@ -361,7 +361,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     end,
     Uid = binary_to_integer(UidBin),
     GameId = binary_to_integer(GameIdBin),
-    Amount = binary_to_float(AmountBin),
+    Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case Amount < 0.00000001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
