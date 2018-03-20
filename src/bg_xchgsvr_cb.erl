@@ -105,8 +105,8 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         put(transaction_id, TransactionId),
         Usr = usr_user:get_one(PlayerId),
 
-        {true, Cas} = lib_user_gold_transfer:lock(TransactionType, TransactionId),
-        put(user_gold_transfer_lock, {TransactionType, TransactionId, Cas}),
+        {true, Cas} = lib_user_gold_transfer:lock(TransactionType, PlayerId),
+        put(user_gold_transfer_lock, {TransactionType, PlayerId, Cas}),
 
         TransferAmount = case usr_gold_transfer:get_gold_transfer_gids_by_transaction_id_and_transaction_type({TransactionId, TransactionType}) of
             [] ->
@@ -188,8 +188,8 @@ action(_, Action, Req) ->
 % 解锁
 unlock() ->
     case get(user_gold_transfer_lock) of
-        {TransType, TransId, CasVal} ->
-            lib_user_gold_transfer:unlock(TransType, TransId, CasVal);
+        {TransType, PlyrId, CasVal} ->
+            lib_user_gold_transfer:unlock(TransType, PlyrId, CasVal);
         _ -> void
     end.
 

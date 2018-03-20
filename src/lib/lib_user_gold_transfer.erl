@@ -45,19 +45,19 @@ gen_uuid() ->
     <<ServerIdBin/binary, Uuid/binary>>.
 
 % 锁定成功，返回{true, Cas}
-lock(TransactionType, TransactionId) ->
-    LockKey = cache_lock_key(TransactionType, TransactionId),
+lock(TransactionType, PlayerId) ->
+    LockKey = cache_lock_key(TransactionType, PlayerId),
     case cache:get_and_lock(LockKey) of
         false ->
             cache:set(LockKey, <<>>),
-            lock(TransactionType, TransactionId);
+            lock(TransactionType, PlayerId);
         {true, Cas, _} ->
             {true, Cas}
     end.
 
-unlock(TransactionType, TransactionId, Cas) ->
-    cache:unlock(cache_lock_key(TransactionType, TransactionId), Cas).
+unlock(TransactionType, PlayerId, Cas) ->
+    cache:unlock(cache_lock_key(TransactionType, PlayerId), Cas).
 
-cache_lock_key(TransactionType, TransactionId) ->
-    list_to_binary(io_lib:format(<<"lock_usr_gold_transfer_~p_~p">>, [TransactionType, TransactionId])).
+cache_lock_key(TransactionType, PlayerId) ->
+    list_to_binary(io_lib:format(<<"lock_usr_gold_transfer_~p_~p">>, [TransactionType, PlayerId])).
 

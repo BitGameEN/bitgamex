@@ -24,8 +24,23 @@ init(Req, Opts) ->
             _:ExceptionErr ->
                 ?ERR("bg_gatesvr_cb exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
                 cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
+        after
+            unlock_user()
         end,
     {ok, Req2, Opts}.
+
+lock_user(PlayerId) ->
+    {true, Cas} = lib_user:lock(PlayerId),
+    put(user_lock, {PlayerId, Cas}),
+    ok.
+
+unlock_user() ->
+    case get(user_lock) of
+        {PlayerId, Cas} ->
+            lib_user:unlock(PlayerId, Cas);
+        _ -> void
+    end,
+    ok.
 
 action(_, undefined, _Req) ->
     throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
@@ -70,6 +85,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
         true -> void
     end,
     {PeerIp, _} = maps:get(peer, Req),
+    lock_user(Uid),
     c_gatesvr:api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer,
                               Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]);
 
@@ -107,6 +123,7 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_bind_user([User, BindType, BindVal]);
 
 % https://api.bitgamex.com/?a=get_game&uid=xx&game_id=xx&token=xx
@@ -136,6 +153,7 @@ action(<<"GET">>, <<"get_game">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_get_game([User]);
 
 % https://api.bitgamex.com/?a=save_game
@@ -178,6 +196,7 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_save_game([User, GameData]);
 
 % https://api.bitgamex.com/?a=transfer_coin_in_game&uid=xx&game_id=xx&token=xx&dst_uid=xx&amount=xx&time=xx&sign=xx
@@ -229,6 +248,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
         false -> throw({-1, <<"wrong dst uid">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_transfer_coin_in_game([User, DstUser, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 % https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&time=xx&sign=xx
@@ -265,6 +285,7 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_bind_exchange_accid([User, ExchangeAccId]);
 
 % https://api.bitgamex.com/?a=bind_wallet&uid=xx&game_id=xx&token=xx&wallet_addr=xx&time=xx&sign=xx
@@ -301,6 +322,7 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_bind_wallet([User, WalletAddr]);
 
 % https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
@@ -346,6 +368,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         <<>> -> throw({-1, <<"no exchange account id bound">>});
         _ -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_transfer_coin_to_exchange([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 % https://api.bitgamex.com/?a=transfer_coin_to_wallet&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
@@ -395,6 +418,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         <<>> -> throw({-2, <<"no wallet address bound">>});
         _ -> void
     end,
+    lock_user(Uid),
     c_gatesvr:api_transfer_coin_to_wallet([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 action(_, _Action, _Req) ->
