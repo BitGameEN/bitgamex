@@ -9,8 +9,6 @@
 
 
 % 锁定成功，返回{true, Cas}
-lock(0) ->
-    void;
 lock(PlayerId) ->
     LockKey = cache_lock_key(PlayerId),
     case cache:get_and_lock(LockKey) of

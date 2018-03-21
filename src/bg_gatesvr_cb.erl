@@ -29,6 +29,8 @@ init(Req, Opts) ->
         end,
     {ok, Req2, Opts}.
 
+lock_user(0) ->
+    ok;
 lock_user(PlayerId) ->
     {true, Cas} = lib_user:lock(PlayerId),
     put(user_lock, {PlayerId, Cas}),
