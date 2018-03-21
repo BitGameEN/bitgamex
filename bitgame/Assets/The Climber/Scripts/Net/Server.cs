@@ -50,9 +50,9 @@ public class Server : MonoBehaviour {
 			Debug.LogWarning("str"+str);
 			www = UnityEngine.Networking.UnityWebRequest.Get(SERVER_URL+"/?"+str);
 		}
-		yield return www.SendWebRequest();
+		yield return www.Send();
 		if(!string.IsNullOrEmpty(www.error)){
-			Debug.LogWarning(www.responseCode+"error"+www.error+"type:"+www.isHttpError+"::"+www.isNetworkError);
+			Debug.LogWarning(www.responseCode+"error"+www.error);
 			error();
 		}else if(www.isDone){
 			Debug.LogWarning("result"+www.downloadHandler.text);
