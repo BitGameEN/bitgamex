@@ -95,6 +95,9 @@
      <Compile Include="Assets\The Climber\Scripts\uiManager.cs" />
      <None Include="Assets\The Climber\JsonFx.Json\Readme.txt" />
      <None Include="Assets\The Climber\JsonFx.Json\License.txt" />
+ <Reference Include="UnityEngine.Advertisements">
+ <HintPath>/Applications/Unity/Unity.app/Contents/UnityExtensions/Unity/Advertisements/UnityEngine.Advertisements.dll</HintPath>
+ </Reference>
  <Reference Include="UnityEngine.UI">
  <HintPath>/Applications/Unity/Unity.app/Contents/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>

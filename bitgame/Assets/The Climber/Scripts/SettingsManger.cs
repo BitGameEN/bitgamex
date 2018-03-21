@@ -28,7 +28,7 @@ public class SettingsManger : MonoBehaviour {
 	}
 
 	private void Update() {
-		labelBalance.text = "balance: "+App.Instance.balance.ToString();
+		labelBalance.text = "BGC余额: "+App.Instance.balance.ToString();
 		labelWallet.text = "钱包地址: "+App.Instance.wallet_addr;
 		labelExchange.text = "交易所Id: "+App.Instance.exchange_accid;
 	}
@@ -44,10 +44,10 @@ public class SettingsManger : MonoBehaviour {
 		}
 		API.Instance.TransferCoinInGame(toId,amount,()=>{
 			Debug.LogWarning("success");
-			tips.text = "转给"+toId+"成功!";
+			tips.text = "转给玩家("+toId+")成功!";
 		},()=>{
 			Debug.LogWarning("fail");
-			tips.text = "转给"+toId+"失败!";
+			tips.text = "转给玩家("+toId+")失败!";
 		});
 	}
 
