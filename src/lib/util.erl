@@ -137,7 +137,7 @@ floor(X) ->
     end.
 
 binary_to_float(Bin) ->
-    case erlang:binary_to_float(Bin) of
+    case catch erlang:binary_to_float(Bin) of
         {'EXIT',{badarg,_}} ->
             binary_to_integer(Bin);
         Float -> Float
