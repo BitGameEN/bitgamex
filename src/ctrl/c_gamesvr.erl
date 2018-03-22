@@ -48,9 +48,13 @@ save_game_data(GameId, UserId, GameData) ->
             <<>> -> 0;
             _ ->
                 % 结算脚本函数，比如：
-                % function f(s0, s)
-                %   return 0.5
-                % end
+                %package.path = package.path .. ";../priv/?.lua;"
+                %json = require "json"
+                %
+                %function f(s0, s)
+                %  t = json.decode(s)
+                %  return t["score"] * 0.1
+                %end
                 ?DBG("balance_lua_f:~n~s~n", [BalanceLuaF]),
                 LuaState0 = luerl:init(),
                 {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
