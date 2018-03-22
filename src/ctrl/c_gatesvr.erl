@@ -83,7 +83,7 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
     log_player_login:set_one(LogR),
     {ok, GameData, Balance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, token => SessionToken, game_data => GameData, balance => Balance,
-           exchange_accid = User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr}}.
+           exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr}}.
 
 create_session_token(Uid, GameId, DeviceId) ->
     Time = util:unixtime(),
