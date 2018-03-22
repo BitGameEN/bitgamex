@@ -55,7 +55,7 @@ public class Server : MonoBehaviour {
 			Debug.LogWarning(www.responseCode+"error"+www.error);
 			error();
 		}else if(www.isDone){
-			Debug.LogWarning("result"+www.downloadHandler.text);
+			Debug.LogWarning(www.responseCode+"result"+www.downloadHandler.text);
 			response(www.downloadHandler.text);
 		}else{
 			Debug.LogWarning("error1"+www.error);

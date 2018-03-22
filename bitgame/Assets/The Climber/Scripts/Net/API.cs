@@ -146,6 +146,7 @@ public class API{
 
 	public void TransferCoinToWallet(float amount,Action success,Action fail){
 		var args = new Dictionary<string,object>();
+		args["a"] = "transfer_coin_to_wallet";
 		args["uid"] = App.Instance.uid;
 		args["game_id"] = App.Instance.game.game_id;
 		args["token"] = App.Instance.token;

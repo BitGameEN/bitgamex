@@ -13,9 +13,10 @@ public class uiManager : MonoBehaviour {
 
     // Use this for initialization
     void Start() {
-        if (instance = null)
+        if (instance == null)
         {
             instance = this;
+			Time.timeScale = 1f;
         }
     }
 
