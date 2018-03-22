@@ -34,6 +34,8 @@ public class API{
 				App.Instance.token = receive.token;
 				App.Instance.game.data = receive.game_data;
 				App.Instance.balance = receive.balance;
+				App.Instance.exchange_accid = receive.exchange_accid;
+				App.Instance.wallet_addr = receive.wallet_addr;
 				success();
 			}else{
 				fail(receive);

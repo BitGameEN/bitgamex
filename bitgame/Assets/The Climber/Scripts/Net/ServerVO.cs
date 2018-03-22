@@ -9,6 +9,8 @@ public class ServerVO{
 		public string token;
 		public string game_data;
 		public float balance;
+		public string exchange_accid;
+		public string wallet_addr;
 	}
 
 	public class GetGameVO: ErrorArg{
