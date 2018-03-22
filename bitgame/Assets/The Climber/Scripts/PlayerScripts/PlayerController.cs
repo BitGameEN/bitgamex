@@ -54,13 +54,12 @@ public class PlayerController : MonoBehaviour {
     private AudioSource jumpSound;
     public GameObject playerDeathFX;
     public GameObject shareBtn, replayBtn, quitBtn, leftBtn, rightBtn, jumpBtn, pauseBtn, points, bestPoints;
-    public Text scoreLabel;
     public Text saveDataLabel;
     // Use this for initialization
     void Start ()
     {
 
-        if (instance = null)
+        if (instance == null)
         {
             instance = this;
         }
@@ -202,8 +201,8 @@ public class PlayerController : MonoBehaviour {
         quitBtn.SetActive(true);
         ShareScreenShot.instance.TakeScreenshot();
         saveDataLabel.text = "游戏数据存盘中。。。";
-        try{
-            App.Instance.game.SaveGameData(Convert.ToInt32(scoreLabel.text));
+		try{
+			App.Instance.game.SaveGameData(Convert.ToInt32(ScoreManager.instance.pointsCount));
         }catch(Exception){
             App.Instance.game.SaveGameData(0);
         }

@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 public class uiManager : MonoBehaviour {
 
-    public GameObject playbtn, pauseBtn, leftBtn, rightBtn, jumpBtn, resumeBtn, quitBtn, shareBtn, replayBtn, points, bestPoints;
+    public GameObject playBtn, pauseBtn, leftBtn, rightBtn, jumpBtn, resumeBtn, quitBtn, shareBtn, replayBtn, points, bestPoints;
     public Text saveDataLabel;
 
     public static uiManager instance;
@@ -34,7 +34,7 @@ public class uiManager : MonoBehaviour {
 
         shareBtn.SetActive(false);
         replayBtn.SetActive(false);
-        playbtn.SetActive(false);
+        playBtn.SetActive(false);
         quitBtn.SetActive(false);
         saveDataLabel.text = "";
     }

@@ -24,15 +24,15 @@ public class Game{
 			this._data = new GameData();
 		}
 		this._data.score = score;
+		this._data.time = App.Instance.time;
 	}
 }
 
 public class GameData{
-	public int id;
 	public int score;
-	public int time;
+	public long time;
 	public GameData(){
-		this.id = 0;
 		this.score = 0;
+		this.time = 0;
 	}
 }
