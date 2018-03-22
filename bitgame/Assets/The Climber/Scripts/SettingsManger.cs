@@ -44,10 +44,13 @@ public class SettingsManger : MonoBehaviour {
 		}
 		API.Instance.TransferCoinInGame(toId,amount,()=>{
 			Debug.LogWarning("success");
-			tips.text = "转给玩家("+toId+")成功!";
-		},()=>{
+			tips.text = "转给玩家成功!";
+		},(e)=>{
 			Debug.LogWarning("fail");
-			tips.text = "转给玩家("+toId+")失败!";
+			tips.text = "转给玩家失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
 		});
 	}
 
@@ -61,9 +64,12 @@ public class SettingsManger : MonoBehaviour {
 		API.Instance.TransferCoinToWallet(amount,()=>{
 			Debug.LogWarning("success");
 			tips.text = "转到钱包成功!";
-		},()=>{
+		},(e)=>{
 			Debug.LogWarning("fail");
 			tips.text = "转到钱包失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
 		});
 	}
 
@@ -77,9 +83,12 @@ public class SettingsManger : MonoBehaviour {
 		API.Instance.TransferCoinToExchange(amount,()=>{
 			Debug.LogWarning("success");
 			tips.text = "转到交易所成功!";
-		},()=>{
+		},(e)=>{
 			Debug.LogWarning("fail");
 			tips.text = "转到交易所失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
 		});
 	}
 
@@ -88,9 +97,12 @@ public class SettingsManger : MonoBehaviour {
 		API.Instance.BindExchangeAccid(accid,()=>{
 			Debug.LogWarning("success");
 			tips.text = "绑定交易所成功!";
-		},()=>{
+		},(e)=>{
 			Debug.LogWarning("fail");
 			tips.text = "绑定交易所失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
 		});
 	}
 
@@ -99,9 +111,12 @@ public class SettingsManger : MonoBehaviour {
 		API.Instance.BindWallet(wallet,()=>{
 			Debug.LogWarning("success");
 			tips.text = "绑定钱包成功！";
-		},()=>{
+		},(e)=>{
 			Debug.LogWarning("fail");
 			tips.text = "绑定钱包失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
 		});
 	}
 }

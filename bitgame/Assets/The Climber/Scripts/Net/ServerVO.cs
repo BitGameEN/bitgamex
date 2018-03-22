@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class ServerVO{
-	public class LoginGameVO{
+	public class LoginGameVO: ErrorArg{
 		public int succ;
 		public int uid;
 		public string token;
@@ -11,50 +11,49 @@ public class ServerVO{
 		public float balance;
 	}
 
-	public class GetGameVO{
+	public class GetGameVO: ErrorArg{
 		public int succ;
 		public string game_data;
 		public float balance;
 	}
 
-	public class SaveGameVO{
+	public class SaveGameVO: ErrorArg{
 		public int succ;
 		public string game_data;
 		public float balance;
 		public float f_res;
 	}
 
-	public class TransferCoinInGameVO{
+	public class TransferCoinInGameVO: ErrorArg{
 		public int succ;
 		public float balance;
 	}
 
-	public class BindExchangeAccidVO{
+	public class BindExchangeAccidVO: ErrorArg{
 		public int succ;
 		public string exchange_accid;
 	}
 
-	public class TransferCoinToExchangeVO{
+	public class TransferCoinToExchangeVO: ErrorArg{
 		public int succ;
 		public float balance;
 		public float exchange_balance;
 	}
 
-	public class BindWalletVO{
+	public class BindWalletVO: ErrorArg{
 		public int succ;
 		public string wallet_addr;
 	}
 
-	public class TransferCoinToWalletVO{
+	public class TransferCoinToWalletVO: ErrorArg{
 		public int succ;
 		public float balance;
 		public float exchange_balance;
 	}
 
 	public class ErrorArg{
-		public int succ;
 		public string req;
-		public int errorno;
+		public int errno;
 		public string errmsg;
 		public enum ErrorNo:int{
 			ERROR_IP = -999,
@@ -64,8 +63,12 @@ public class ServerVO{
 			PROTOCOL_UNSUPPORT = -995,
 			THROW_EXCEPTION = -994,
 			GAME_NOT_OPEN = -993,
-			READ_BUFF_FAIL = -992,
-			NO_RPC_SERVER = -991
+			READ_CACHE_FAIL = -992,
+			NO_RPC_SERVER = -991,
+			GOLD_NOT_ENOUGH = -990,
+			REQUEST_FAILED = -989,
+			REQUEST_TIMEOUT = -988,
+			UNKNOWN = -987
 		}
 	}
 }

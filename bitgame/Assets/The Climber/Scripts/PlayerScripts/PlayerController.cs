@@ -208,8 +208,11 @@ public class PlayerController : MonoBehaviour {
         }
         API.Instance.SaveGame(()=>{
             saveDataLabel.text = "游戏数据存盘成功!";
-        },()=>{
-            saveDataLabel.text = "游戏数据存盘失败!";
+        },(e)=>{
+			saveDataLabel.text = "游戏数据存盘失败!";
+			if(e != null){
+				saveDataLabel.text += e.errno;
+			}
         });
     }
 

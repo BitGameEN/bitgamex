@@ -25,11 +25,17 @@ public class StartUp : MonoBehaviour {
 			API.Instance.GetGame(()=>{
 				label.text = "获取游戏数据成功。。。";
 				SceneManager.LoadSceneAsync("GameScene",LoadSceneMode.Single);
-			},()=>{
+			},(e)=>{
 				label.text = "获取游戏数据失败";
+				if(e != null){
+					label.text += e.errno;
+				}
 			});
-		},()=>{
+		},(e)=>{
 			label.text = "登录失败";
+			if(e != null){
+				label.text += e.errno;
+			}
 		});
 	}
 }
