@@ -38,7 +38,7 @@ public class SettingsManger : MonoBehaviour {
 		var amount = 0f;
 		try{
 			toId = Convert.ToInt32(labelTransferId.text);
-			amount = Convert.ToSingle(labelBalance.text);
+			amount = Convert.ToSingle(labelTransferBalance.text);
 		}catch(Exception){
 
 		}
