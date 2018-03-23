@@ -76,7 +76,7 @@ public class SettingsManger : MonoBehaviour {
 	public void TransferCoinToExchange(){
 		var amount = 0f;
 		try{
-			amount = Convert.ToSingle(labelBalance.text);
+			amount = Convert.ToSingle(inputExchange.text);
 		}catch(Exception){
 
 		}
