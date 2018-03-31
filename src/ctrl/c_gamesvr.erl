@@ -7,6 +7,7 @@
          save_game_data/3]).
 
 -include("common.hrl").
+-include("record.hrl").
 -include("record_run_role.hrl").
 -include("record_usr_game.hrl").
 -include("record_usr_user_gold.hrl").
@@ -43,7 +44,7 @@ save_game_data(GameId, UserId, GameData) ->
     Now = util:unixtime(),
     #usr_game{balance_lua_f = BalanceLuaF} = usr_game:get_one(GameId),
     #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
-    DeltaBalance0 =
+    DeltaBalance =
         case BalanceLuaF of
             <<>> -> 0;
             _ ->
@@ -61,15 +62,19 @@ save_game_data(GameId, UserId, GameData) ->
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
                 V
         end,
-    % 对基础增量进行额外的规则调整
-    DeltaBalance = DeltaBalance0,
-    lib_user_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
-    lib_user_gold:add_gold(UserId, DeltaBalance),
-    run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now}),
+    
+    case DeltaBalance > 0 of
+        true ->
+            mod_distributor:req_add_balance(#add_balane_req{uid = UserId, game_id = GameId, delta_balance = DeltaBalance, time = Now});
+        false ->
+            lib_user_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
+            lib_user_gold:add_gold(UserId, DeltaBalance),
+            run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now})
+    end,
 
     run_data:trans_commit(),
     UserGold = usr_user_gold:get_one(UserId),
-    {ok, GameData, UserGold#usr_user_gold.gold, DeltaBalance0}
+    {ok, GameData, UserGold#usr_user_gold.gold, DeltaBalance}
 
   catch
     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->

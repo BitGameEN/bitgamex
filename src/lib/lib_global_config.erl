@@ -22,6 +22,12 @@ get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG = Key) ->
         #usr_global_config{content = Val} ->
             util:zero_if_negative(binary_to_float(Val))
     end;
+get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_LOGIN = Key) ->
+    case usr_global_config:get_one(Key) of
+        [] -> 0.3;
+        #usr_global_config{content = Val} ->
+            util:clamp(0, 1, binary_to_float(Val))
+    end;
 get(_) ->
     undefined.
 

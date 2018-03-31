@@ -34,6 +34,7 @@ run() ->
     gen("global_config"),
     gen("user", true),
     gen("user_gold"),
+    gen("user_gold_to_draw"),
     gen("gold_transfer"),
     ok.
 

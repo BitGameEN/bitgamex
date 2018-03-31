@@ -11,6 +11,7 @@ start([Ip, Sid]) ->
     ok = start_disperse([Ip, Sid]),
     ok = start_kernel(),
     ok = start_rand(),
+    ok = start_distributor(),
     util:launch_log("<==== game server ready.~n~n~n", []),
     ok.
 
@@ -42,5 +43,15 @@ start_rand() ->
                 {mod_rand,
                 {mod_rand, start_link,[]},
                 permanent, 10000, supervisor, [mod_rand]}),
+    ok.
+
+%%开启分配器
+start_distributor() ->
+    util:launch_log("====> start_distributor...~n", []),
+    {ok,_} = supervisor:start_child(
+                bg_gamesvr_sup,
+                {mod_distributor,
+                {mod_distributor, start_link,[]},
+                permanent, 10000, supervisor, [mod_distributor]}),
     ok.
 

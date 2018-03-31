@@ -12,3 +12,9 @@
     type
 }).
 
+-record(add_balane_req, {
+    uid = 0,
+    game_id = 0,
+    delta_balance = 0,
+    time = 0
+}).

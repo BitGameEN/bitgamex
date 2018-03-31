@@ -99,6 +99,11 @@ handle_info(get_and_call_server, State) ->
     get_and_call_server(State),
     [erlang:monitor_node(Server#server.node, true) || Server <- gamesvr_list()],
     [erlang:monitor_node(Server#server.node, true) || Server <- xchgsvr_list()],
+    case State#state.type of
+        ?SVRTYPE_GATE ->
+            lib_game:set_gamesvr_num(length(gamesvr_list()));
+        _ -> void
+    end,
     {noreply, State};
 
 %% 新服务器加入
@@ -111,7 +116,8 @@ handle_info({rpc_server_add, Id, Node, Ip, Port, Type}, State) ->
                 true ->
                     ?INFO("gamesvr added: id=~p, node=~p, ip=~p, port=~p, type=~p", [Id, Node, Ip, Port, Type]),
                     erlang:monitor_node(Node, true),
-                    ets:insert(?ETS_GAMESVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type});
+                    ets:insert(?ETS_GAMESVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type}),
+                    lib_game:set_gamesvr_num(length(gamesvr_list()));
                 false ->
                     skip
             end;
