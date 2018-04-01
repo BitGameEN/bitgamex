@@ -31,6 +31,8 @@ mysql_halt([Sql, Reason]) ->
 run() ->
     init_db(),
     gen("role", false, 2),
+    gen("role_gold", false, 2),
+    gen("role_gold_to_draw", false, 2),
     ok.
 
 gen(Table) ->

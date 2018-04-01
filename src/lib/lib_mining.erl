@@ -8,7 +8,7 @@
 -include("common.hrl").
 -include("gameConfigGlobalKey.hrl").
 -include("record.hrl").
--include("record_usr_user_gold_to_draw.hrl").
+-include("record_run_role_gold_to_draw.hrl").
 
 % 挖矿逻辑
 % 游戏内挖矿的总量为15亿代币，第一年3.75亿，每天产量固定，约102.74万个，每2年产出减半
@@ -27,15 +27,15 @@ distribute_game_delta_balances([], _) ->
     void;
 distribute_game_delta_balances(Requests, DurationSeconds) ->
     Quota = get_output_quota(game, DurationSeconds),
-    DistributeL0 = [{Uid, DeltaBalance * lib_game:game_hard_coef(GameId), Time} ||
-                    #add_balane_req{uid = Uid, game_id = GameId, delta_balance = DeltaBalance, time = Time} <- Requests],
+    DistributeL0 = [{{Uid, Gid}, DeltaBalance * lib_game:game_hard_coef(Gid), Time} ||
+                    #add_balane_req{uid = Uid, game_id = Gid, delta_balance = DeltaBalance, time = Time} <- Requests],
     Total = lists:sum([V || {_, V, _} <- DistributeL0]),
     DistributeL = case Total =< Quota of
                       true -> DistributeL0;
                       false -> [{K, Quota * V / Total, T} || {K, V, T} <- DistributeL0]
                   end,
-    F = fun(UserId, AddBalance, Time) ->
-            lib_user_gold_to_draw:add_gold_to_draw(UserId, [{Time, AddBalance}])
+    F = fun({UserId, GameId}, AddBalance, Time) ->
+            lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, [{Time, AddBalance}])
         end,
     [F(K, V, T) || {K, V, T} <- DistributeL],
     ok.

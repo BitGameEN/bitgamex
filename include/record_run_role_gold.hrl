@@ -1,11 +1,13 @@
 %%%--------------------------------------------------------
-%%% @Module: usr_user_gold_to_draw
+%%% @Module: run_role_gold
 %%% @Description: 自动生成
 %%%--------------------------------------------------------
 
--record(usr_user_gold_to_draw, {
+-record(run_role_gold, {
 		key_id,
 		player_id = 0, % 用户id（玩家id）
-		gold_list = [], % erlang，待领金币列表，格式：[{时间戳, 数量}, ...]
+		ver = 0, % 数据结构版本
+		game_id = 0, % 游戏id
+		gold = 0, % 金币
 		time = 0 % 更新时间戳
 }).

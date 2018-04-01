@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 03/17/2018 11:04:39 AM
+ Date: 04/01/2018 09:11:30 AM
 */
 
 SET NAMES utf8;
@@ -135,16 +135,5 @@ CREATE TABLE `user_gold` (
   `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家金币';
-
--- ----------------------------
---  Table structure for `user_gold_to_draw`
--- ----------------------------
-DROP TABLE IF EXISTS `user_gold_to_draw`;
-CREATE TABLE `user_gold_to_draw` (
-  `player_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '用户id（玩家id）',
-  `gold_list` varchar(20480) NOT NULL DEFAULT '[]' COMMENT 'erlang，待领金币列表，格式：[{时间戳, 数量}, ...]',
-  `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
-  PRIMARY KEY (`player_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家待领金币';
 
 SET FOREIGN_KEY_CHECKS = 1;

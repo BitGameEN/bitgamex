@@ -45,6 +45,8 @@ code_change(_OldVsn, Status, _Extra) ->
 %%初始ETS表
 init_ets() ->
     run_role:init(),
+    run_role_gold:init(),
+    run_role_gold_to_draw:init(),
     ok.
 
 %%初始DETS表
