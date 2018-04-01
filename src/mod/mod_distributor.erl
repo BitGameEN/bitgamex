@@ -17,7 +17,7 @@
 }).
 
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link({local,?MODULE}, ?MODULE, [], []).
 
 req_add_balance(RequestInfo) ->
     gen_server:cast(?MODULE, {req_add_balance, RequestInfo}).

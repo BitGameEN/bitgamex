@@ -13,7 +13,7 @@
 add_gold_to_draw(PlayerId, GameId, GoldListToDraw) when is_list(GoldListToDraw) ->
     {true, Cas} = lock(PlayerId),
     try
-        RoleGoldToDraw = run_role_gold_to_draw:get_one(PlayerId),
+        RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
         OldGoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
         NewGoldList = GoldListToDraw ++ OldGoldList,
         save(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList}),
@@ -47,8 +47,8 @@ cache_lock_key(PlayerId) ->
     % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
 
-save(#run_role_gold_to_draw{player_id = PlayerId, gold_list = NewGoldList} = RoleGoldToDraw) ->
-    #run_role_gold_to_draw{gold_list = OldGoldList} = run_role_gold_to_draw:get_one(PlayerId),
+save(#run_role_gold_to_draw{game_id = GameId, player_id = PlayerId, gold_list = NewGoldList} = RoleGoldToDraw) ->
+    #run_role_gold_to_draw{gold_list = OldGoldList} = run_role_gold_to_draw:get_one({GameId, PlayerId}),
     OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldList]),
     NewGoldToDraw = lists:sum([V || {_, V} <- NewGoldList]),
     GoldDelta = NewGoldToDraw - OldGoldToDraw,
