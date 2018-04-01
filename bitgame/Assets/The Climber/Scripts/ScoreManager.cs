@@ -71,7 +71,7 @@ public class ScoreManager : MonoBehaviour {
         bestPointsDisp.text = "Best : " + Mathf.Round(bestPointsCountDisp);
 
         uidText.text = "userid : "+App.Instance.uid;
-        blanceText.text = "balance : "+App.Instance.balance;
+        blanceText.text = "balance : "+App.Instance.role_balance;
     }
 
     public void AddScore(int pointsToAdd)

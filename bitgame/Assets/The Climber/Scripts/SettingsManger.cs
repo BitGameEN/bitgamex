@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System;
 public class SettingsManger : MonoBehaviour {
 	public Canvas canvas;
+	public Text labelUserBalance;
 	public Text labelBalance;
 	public Text labelWallet;
 	public Text labelExchange;
@@ -28,7 +29,8 @@ public class SettingsManger : MonoBehaviour {
 	}
 
 	private void Update() {
-		labelBalance.text = "BGC余额: "+App.Instance.balance.ToString();
+		labelUserBalance.text = "用户BGC余额: "+App.Instance.user_balance.ToString();
+		labelBalance.text = "角色BGC余额: "+App.Instance.role_balance.ToString();
 		labelWallet.text = "钱包地址: "+App.Instance.wallet_addr;
 		labelExchange.text = "交易所Id: "+App.Instance.exchange_accid;
 	}
