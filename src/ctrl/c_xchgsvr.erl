@@ -3,14 +3,14 @@
 %%% @Description: xchgsvr的逻辑处理模块
 %%%--------------------------------------
 -module(c_xchgsvr).
--export([transfer_gold_to_exchange/3, transfer_gold_to_wallet/3]).
+-export([transfer_gold_to_exchange/4, transfer_gold_to_wallet/4]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
 -include("gameConfigGlobalKey.hrl").
 -include("gameConfig3rdParty.hrl").
 -include("record_usr_user.hrl").
--include("record_usr_user_gold.hrl").
+-include("record_run_role_gold.hrl").
 -include("record_usr_gold_transfer.hrl").
 
 -define(TRANSFER_TO_XCHG_URL, "https://exchange_ip/?a=transfer_coin_to_exchange").
@@ -21,16 +21,17 @@
 -define(HTTP_CLIENT_OPTIONS, [{max_sessions, 100}, {max_pipeline_size, 10}]).
 
 
-transfer_gold_to_exchange(User, Amount, ReceiptData) ->
-    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, User, Amount, ReceiptData).
+transfer_gold_to_exchange(GameId, UserId, Amount, ReceiptData) ->
+    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, UserId, Amount, ReceiptData).
 
-transfer_gold_to_wallet(User, Amount, ReceiptData) ->
-    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_WALLET, User, Amount, ReceiptData).
+transfer_gold_to_wallet(GameId, UserId, Amount, ReceiptData) ->
+    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_WALLET, GameId, UserId, Amount, ReceiptData).
 
-transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr} = User, Amount0, ReceiptData) ->
+transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
+    #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr, device_id = DeviceId} = usr_user:get_one(UserId),
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
-    lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
-    lib_user_gold:add_gold(UserId, -Amount0),
+    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
+    lib_role_gold:add_gold(UserId, -Amount0),
     TransactionId = lib_user_gold_transfer:gen_uuid(),
     NowDateTime = util:now_datetime_str(),
     TransferR = #usr_gold_transfer{
@@ -39,13 +40,13 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
                     transaction_id = TransactionId,
                     receipt = ReceiptData,
                     player_id = UserId,
-                    device_id = User#usr_user.device_id,
+                    device_id = DeviceId,
                     xchg_accid = BindXchgAccId,
                     wallet_addr = case TransferType of ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET -> BindWalletAddr; _ -> <<>> end,
                     gold = Amount0,
                     status = 0,
                     error_tag = <<>>,
-                    receive_game_id = User#usr_user.current_game_id,
+                    receive_game_id = GameId,
                     receive_time = NowDateTime,
                     update_time = NowDateTime},
     usr_gold_transfer:set_one(TransferR),
@@ -82,7 +83,7 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
         fun(JsonObject) ->
             case lists:keyfind(<<"succ">>, 1, JsonObject) of
                 {_, 0} -> % 失败
-                    lib_user_gold:add_gold(UserId, Amount0), % 返回游戏币
+                    lib_role_gold:add_gold(UserId, Amount0), % 返回游戏币
                     ErrNo = case lists:keyfind(<<"errno">>, 1, JsonObject) of
                                 {_, ErrNo_} ->  ErrNo_;
                                 false -> ?ERRNO_UNIDENTIFIED
@@ -100,7 +101,8 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
                             false -> -1
                         end,
                     lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, Amount0}),
-                    {ok, Balance}
+                    RoleGold = run_role_gold:get_one({GameId, UserId}),
+                    {ok, RoleGold#run_role_gold.gold, Balance}
             end
         end,
     Url = case TransferType of
@@ -113,7 +115,7 @@ transfer_gold(TransferType, #usr_user{id = UserId, bind_xchg_accid = BindXchgAcc
                 ?ERRNO_HTTP_REQ_TIMEOUT ->
                     % 超时情况下不能确认是否已经发到对端并处理完成，所以不能返回游戏币
                     httpc_proxy:queue_request(Url, get, Params, Callback);
-                _ -> lib_user_gold:add_gold(UserId, Amount0) % 返回游戏币
+                _ -> lib_role_gold:add_gold(UserId, Amount0) % 返回游戏币
             end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, Rs),
             throw({ErrNo, ErrMsg});

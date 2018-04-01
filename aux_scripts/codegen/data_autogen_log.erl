@@ -31,6 +31,7 @@ mysql_halt([Sql, Reason]) ->
 run() ->
     init_db(),
     gen("gold"),
+    gen("gold_to_draw"),
     gen("player_login"),
     ok.
 

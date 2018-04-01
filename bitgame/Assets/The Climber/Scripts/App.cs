@@ -9,7 +9,8 @@ public sealed class App
 	public string exchange_accid;
 	public string wallet_addr;
 	public string token;
-	public float balance;
+	public float role_balance;
+	public float user_balance;
 	public float exchange_balance;
 	private static volatile App instance;
 	private static Object syncRootObject = new Object();

@@ -1,27 +1,26 @@
 %%%--------------------------------------
-%%% @Module  : lib_user_gold
-%%% @Description: 用户金币相关处理
+%%% @Module  : lib_role_gold
+%%% @Description: 角色金币相关处理
 %%%--------------------------------------
--module(lib_user_gold).
--export([add_gold/2, put_gold_drain_type_and_drain_id/3]).
+-module(lib_role_gold).
+-export([add_gold/3, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
--include("record_usr_user.hrl").
--include("record_usr_user_gold.hrl").
+-include("record_run_role_gold.hrl").
 -include("record_log_gold.hrl").
 
 
-add_gold(PlayerId, DeltaGold) ->
+add_gold(PlayerId, GameId, DeltaGold) ->
     {true, Cas} = lock(PlayerId),
     try
-        UserGold = usr_user_gold:get_one(PlayerId),
-        OldGold = UserGold#usr_user_gold.gold,
+        RoleGold = run_role_gold:get_one({GameId, PlayerId}),
+        OldGold = RoleGold#run_role_gold.gold,
         NewGold = OldGold + DeltaGold,
         case NewGold < 0 of
             true -> throw({?ERRNO_GOLD_NOT_ENOUGH, <<"gold not enough">>});
             false -> void
         end,
-        save(UserGold#usr_user_gold{gold = NewGold}),
+        save(RoleGold#run_role_gold{gold = NewGold}),
         unlock(PlayerId, Cas),
         ok
     catch
@@ -49,21 +48,21 @@ unlock(PlayerId, Cas) ->
     cache:unlock(cache_lock_key(PlayerId), Cas).
 
 cache_lock_key(PlayerId) ->
+    % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
 
-save(#usr_user_gold{player_id = PlayerId} = UserGold) ->
-    OldUserGold = usr_user_gold:get_one(PlayerId),
-    GoldDelta = UserGold#usr_user_gold.gold - OldUserGold#usr_user_gold.gold,
+save(#run_role_gold{player_id = PlayerId} = RoleGold) ->
+    OldRoleGold = run_role_gold:get_one(PlayerId),
+    GoldDelta = RoleGold#run_role_gold.gold - OldRoleGold#run_role_gold.gold,
     case GoldDelta of
         0 -> void;
         _ ->
-            User = usr_user:get_one(PlayerId),
             R = #log_gold{
                     player_id = PlayerId,
-                    game_id = User#usr_user.current_game_id,
+                    game_id = RoleGold#run_role_gold.game_id,
                     delta = GoldDelta,
-                    old_value = OldUserGold#usr_user_gold.gold,
-                    new_value = UserGold#usr_user_gold.gold,
+                    old_value = OldRoleGold#run_role_gold.gold,
+                    new_value = RoleGold#run_role_gold.gold,
                     drain_type = case get(gold_drain_type) of undefined -> <<>>; V -> V end,
                     drain_id = case get(gold_drain_id) of undefined -> 0; V -> V end,
                     drain_count = case get(gold_drain_count) of undefined -> 0; V -> V end,
@@ -72,7 +71,7 @@ save(#usr_user_gold{player_id = PlayerId} = UserGold) ->
                 },
             spawn(fun() -> log_gold:set_one(R) end)
     end,
-    usr_user_gold:set_one(UserGold#usr_user_gold{time = util:unixtime()}).
+    run_role_gold:set_one(RoleGold#run_role_gold{time = util:unixtime()}).
 
 get_call_flow(undefined) ->
     {current_stacktrace, Stack} = erlang:process_info(self(), current_stacktrace),

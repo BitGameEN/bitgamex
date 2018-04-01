@@ -13,6 +13,7 @@
         now_datetime_str/0,
         unixtime/0,
         longunixtime/0,
+        get_diff_days/2,
         md5/1,
         rand/2,
         clamp/3,
@@ -89,6 +90,22 @@ unixtime() ->
 longunixtime() ->
     {M, S, Ms} = os:timestamp(),
     M * 1000000000 + S*1000 + Ms div 1000.
+
+-define(DIFF_SECONDS_0000_1970, 62167219200).
+
+%% 根据1970年以来的秒数获得日期
+seconds_to_localtime(Seconds) ->
+    DateTime = calendar:gregorian_seconds_to_datetime(Seconds + ?DIFF_SECONDS_0000_1970),
+    calendar:universal_time_to_local_time(DateTime).
+
+%% 计算相差的天数
+get_diff_days(Seconds1, Seconds2) ->
+    {{Year1, Month1, Day1}, _} = seconds_to_localtime(Seconds1),
+    {{Year2, Month2, Day2}, _} = seconds_to_localtime(Seconds2),
+    Days1 = calendar:date_to_gregorian_days(Year1, Month1, Day1),
+    Days2 = calendar:date_to_gregorian_days(Year2, Month2, Day2),
+    DiffDays = abs(Days2 - Days1),
+    DiffDays.
 
 %% 转换成HEX格式的md5
 md5(S) ->

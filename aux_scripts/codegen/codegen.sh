@@ -1,4 +1,7 @@
 #!/bin/bash
+cd ../lager_compile
+erl -make
+cd ../codegen
 erl -pa ../../ebin -make
 cd ../../ebin
 erl -noshell -s data_autogen_cfg run -s init stop

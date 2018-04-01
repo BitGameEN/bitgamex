@@ -12,7 +12,7 @@ get_one(Game_id = Id) ->
 		{true, _Cas, Val} ->
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_USR, <<"select game_id,game_name,open_status,game_key,balance_lua_f from game where game_id=?">>, [Game_id]) of
+			case db_esql:get_row(?DB_USR, <<"select game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,reclaimed_gold from game where game_id=?">>, [Game_id]) of
 				[] -> [];
 				Row ->
 					R = build_record_from_row(Row),
@@ -49,10 +49,12 @@ set_one(R0) when is_record(R0, usr_game) ->
 				game_name = Game_name,
 				open_status = Open_status,
 				game_key = Game_key,
-				balance_lua_f = Balance_lua_f
+				balance_lua_f = Balance_lua_f,
+				hard_coef = Hard_coef,
+				reclaimed_gold = Reclaimed_gold
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_name,open_status,game_key,balance_lua_f) values(~p,'~s',~p,'~s','~s'); select last_insert_id()">>,
-				[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f])),
+			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,reclaimed_gold) values(~p,'~s',~p,'~s','~s',~p,~p); select last_insert_id()">>,
+				[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, Reclaimed_gold])),
 			R = R0#usr_game{key_id = Insert_id, game_id = Insert_id},
 			cache:set(cache_key(R#usr_game.key_id), R),
 			R#usr_game.key_id
@@ -83,19 +85,23 @@ syncdb(R) when is_record(R, usr_game) ->
 		game_name = Game_name,
 		open_status = Open_status,
 		game_key = Game_key,
-		balance_lua_f = Balance_lua_f
+		balance_lua_f = Balance_lua_f,
+		hard_coef = Hard_coef,
+		reclaimed_gold = Reclaimed_gold
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_name,open_status,game_key,balance_lua_f) values(?,?,?,?,?)">>,
-		[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f]).
+	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,reclaimed_gold) values(?,?,?,?,?,?,?)">>,
+		[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, Reclaimed_gold]).
 
-build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f]) ->
+build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f, Hard_coef, Reclaimed_gold]) ->
 	#usr_game{
 		key_id = Game_id,
 		game_id = Game_id,
 		game_name = Game_name,
 		open_status = Open_status,
 		game_key = Game_key,
-		balance_lua_f = Balance_lua_f
+		balance_lua_f = Balance_lua_f,
+		hard_coef = Hard_coef,
+		reclaimed_gold = Reclaimed_gold
 	}.
 
 cache_key(Game_id = Id) ->

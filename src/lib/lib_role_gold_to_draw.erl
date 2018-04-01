@@ -1,27 +1,22 @@
 %%%--------------------------------------
-%%% @Module  : lib_user_gold
-%%% @Description: 用户金币相关处理
+%%% @Module  : lib_role_gold_to_draw
+%%% @Description: 角色待领金币相关处理
 %%%--------------------------------------
--module(lib_user_gold).
--export([add_gold/2, put_gold_drain_type_and_drain_id/3]).
+-module(lib_role_gold_to_draw).
+-export([add_gold_to_draw/3, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
--include("record_usr_user.hrl").
--include("record_usr_user_gold.hrl").
--include("record_log_gold.hrl").
+-include("record_run_role_gold_to_draw.hrl").
+-include("record_log_gold_to_draw.hrl").
 
 
-add_gold(PlayerId, DeltaGold) ->
+add_gold_to_draw(PlayerId, GameId, GoldListToDraw) when is_list(GoldListToDraw) ->
     {true, Cas} = lock(PlayerId),
     try
-        UserGold = usr_user_gold:get_one(PlayerId),
-        OldGold = UserGold#usr_user_gold.gold,
-        NewGold = OldGold + DeltaGold,
-        case NewGold < 0 of
-            true -> throw({?ERRNO_GOLD_NOT_ENOUGH, <<"gold not enough">>});
-            false -> void
-        end,
-        save(UserGold#usr_user_gold{gold = NewGold}),
+        RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
+        OldGoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
+        NewGoldList = GoldListToDraw ++ OldGoldList,
+        save(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList}),
         unlock(PlayerId, Cas),
         ok
     catch
@@ -30,7 +25,7 @@ add_gold(PlayerId, DeltaGold) ->
             throw({ErrNo, ErrMsg});
         _:ExceptionErr ->
             unlock(PlayerId, Cas),
-            ?ERR("add_gold exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+            ?ERR("add_gold_to_draw exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
             throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
@@ -49,30 +44,32 @@ unlock(PlayerId, Cas) ->
     cache:unlock(cache_lock_key(PlayerId), Cas).
 
 cache_lock_key(PlayerId) ->
+    % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
 
-save(#usr_user_gold{player_id = PlayerId} = UserGold) ->
-    OldUserGold = usr_user_gold:get_one(PlayerId),
-    GoldDelta = UserGold#usr_user_gold.gold - OldUserGold#usr_user_gold.gold,
+save(#run_role_gold_to_draw{game_id = GameId, player_id = PlayerId, gold_list = NewGoldList} = RoleGoldToDraw) ->
+    #run_role_gold_to_draw{gold_list = OldGoldList} = run_role_gold_to_draw:get_one({GameId, PlayerId}),
+    OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldList]),
+    NewGoldToDraw = lists:sum([V || {_, V} <- NewGoldList]),
+    GoldDelta = NewGoldToDraw - OldGoldToDraw,
     case GoldDelta of
         0 -> void;
         _ ->
-            User = usr_user:get_one(PlayerId),
-            R = #log_gold{
+            R = #log_gold_to_draw{
                     player_id = PlayerId,
-                    game_id = User#usr_user.current_game_id,
+                    game_id = RoleGoldToDraw#run_role_gold_to_draw.game_id,
                     delta = GoldDelta,
-                    old_value = OldUserGold#usr_user_gold.gold,
-                    new_value = UserGold#usr_user_gold.gold,
+                    old_value = OldGoldToDraw,
+                    new_value = NewGoldToDraw,
                     drain_type = case get(gold_drain_type) of undefined -> <<>>; V -> V end,
                     drain_id = case get(gold_drain_id) of undefined -> 0; V -> V end,
                     drain_count = case get(gold_drain_count) of undefined -> 0; V -> V end,
                     time = util:unixtime(),
                     call_flow = get_call_flow(get(gold_drain_type))
                 },
-            spawn(fun() -> log_gold:set_one(R) end)
+            spawn(fun() -> log_gold_to_draw:set_one(R) end)
     end,
-    usr_user_gold:set_one(UserGold#usr_user_gold{time = util:unixtime()}).
+    run_role_gold_to_draw:set_one(RoleGoldToDraw#run_role_gold_to_draw{time = util:unixtime()}).
 
 get_call_flow(undefined) ->
     {current_stacktrace, Stack} = erlang:process_info(self(), current_stacktrace),

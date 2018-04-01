@@ -33,6 +33,14 @@ init([Ip, ServerId]) ->
                 [mod_disperse]
             },
             {
+                mod_kernel,
+                {mod_kernel, start_link, []},
+                permanent,
+                10000,
+                supervisor,
+                [mod_kernel]
+            },
+            {
                 uuid_factory,
                 {uuid_factory, start_link, []},
                 permanent,

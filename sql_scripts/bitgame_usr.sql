@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 03/17/2018 11:04:39 AM
+ Date: 04/01/2018 09:11:30 AM
 */
 
 SET NAMES utf8;
@@ -27,6 +27,8 @@ CREATE TABLE `game` (
   `open_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '游戏状态，0-close, 1-open',
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
   `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
+  `hard_coef` float NOT NULL DEFAULT '1' COMMENT '难度系数，难度高给分紧的：> 1，难度低给分松的：< 1，其余：= 1',
+  `reclaimed_gold` double NOT NULL DEFAULT '0' COMMENT '游戏回收的总金币数',
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';

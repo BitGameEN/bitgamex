@@ -4,37 +4,74 @@
 %%%--------------------------------------
 -module(c_gamesvr).
 -export([get_game_data/4,
-         save_game_data/3]).
+         save_game_data/3,
+         transfer_coin_in_game/5]).
 
 -include("common.hrl").
+-include("gameConfig.hrl").
+-include("gameConfigGlobalKey.hrl").
+-include("record.hrl").
 -include("record_run_role.hrl").
+-include("record_run_role_gold.hrl").
+-include("record_run_role_gold_to_draw.hrl").
 -include("record_usr_game.hrl").
+-include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
+-include("record_usr_gold_transfer.hrl").
 
 %% 获取玩家的游戏数据
-get_game_data(GameId, UserId, DoCreate, CreateArgs) ->
+get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
+  try
+    run_data:trans_begin(),
+
     GameData =
         case run_role:get_one({GameId, UserId}) of
             [] -> % 在该游戏中尚无角色
-                case DoCreate of
+                case DoLogin of
                     true ->
-                        [Now, PeerIp] = CreateArgs,
+                        [Now, PeerIp] = LoginArgs,
                         run_role:set_one(
                           #run_role{player_id = UserId,
                                     game_id = GameId,
                                     create_time = Now,
                                     last_login_time = Now,
                                     last_login_ip = ?T2B(PeerIp),
-                                    time = Now});
+                                    time = Now}),
+                        run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = 0, time = Now}),
+                        run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId, gold_list = [], time = Now});
                     false -> void
                 end,
                 <<>>;
             Role ->
+                case DoLogin of
+                    true ->
+                        [Now, PeerIp] = LoginArgs,
+                        run_role:set_one(
+                          Role#run_role{last_login_time = Now,
+                                        last_login_ip = ?T2B(PeerIp),
+                                        time = Now});
+                    false -> void
+                end,
                 Role#run_role.game_data
         end,
+
     UserGold = usr_user_gold:get_one(UserId),
-    Balance = UserGold#usr_user_gold.gold,
-    {ok, GameData, Balance}.
+    UserBalance = UserGold#usr_user_gold.gold,
+    RoleGold = run_role_gold:get_one({GameId, UserId}),
+    RoleBalance = RoleGold#run_role_gold.gold,
+
+    run_data:trans_commit(),
+    {ok, GameData, UserBalance, RoleBalance}
+
+  catch
+    throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+        run_data:trans_rollback(),
+        throw({ErrNo, ErrMsg});
+    _:ExceptionErr ->
+        run_data:trans_rollback(),
+        ?ERR("get_game_data exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+        throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
+    end.
 
 save_game_data(GameId, UserId, GameData) ->
   try
@@ -43,7 +80,7 @@ save_game_data(GameId, UserId, GameData) ->
     Now = util:unixtime(),
     #usr_game{balance_lua_f = BalanceLuaF} = usr_game:get_one(GameId),
     #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
-    DeltaBalance0 =
+    DeltaBalance =
         case BalanceLuaF of
             <<>> -> 0;
             _ ->
@@ -61,23 +98,74 @@ save_game_data(GameId, UserId, GameData) ->
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
                 V
         end,
-    % 对基础增量进行额外的规则调整
-    DeltaBalance = DeltaBalance0,
-    lib_user_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
-    lib_user_gold:add_gold(UserId, DeltaBalance),
-    run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now}),
+    
+    case DeltaBalance > 0 of
+        true ->
+            mod_distributor:req_add_balance(#add_balane_req{uid = UserId, game_id = GameId, delta_balance = DeltaBalance, time = Now});
+        false ->
+            lib_role_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
+            lib_role_gold:add_gold(UserId, GameId, DeltaBalance),
+            run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now})
+    end,
+
+    RoleGold = run_role_gold:get_one({GameId, UserId}),
 
     run_data:trans_commit(),
-    UserGold = usr_user_gold:get_one(UserId),
-    {ok, GameData, UserGold#usr_user_gold.gold, DeltaBalance0}
+    {ok, GameData, RoleGold#run_role_gold.gold, DeltaBalance}
 
   catch
     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
         run_data:trans_rollback(),
-        throw({?ERRNO_EXCEPTION, ErrMsg});
+        throw({ErrNo, ErrMsg});
     _:ExceptionErr ->
         run_data:trans_rollback(),
         ?ERR("save_game_data exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+        throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
+    end.
+
+transfer_coin_in_game(GameId, UserId, DstUserId, Amount, ReceiptData) ->
+  try
+    run_data:trans_begin(),
+
+    DstRole = run_role:get_one({GameId, DstUserId}),
+    case is_record(DstRole, run_role) of
+        true -> void;
+        false -> throw({-2, <<"dst role does not exist">>})
+    end,
+
+    User = usr_user:get_one(UserId),
+    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
+    lib_role_gold:add_gold(UserId, -Amount),
+    lib_role_gold:add_gold(DstUserId, Amount * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME))),
+    NowDateTime = util:now_datetime_str(),
+    TransactionId = integer_to_list(UserId) ++ "_" ++ integer_to_list(DstUserId) ++ "_" ++ integer_to_list(util:longunixtime()),
+    TransferR = #usr_gold_transfer{
+                    type = ?GOLD_TRANSFER_TYPE_IN_GAME,
+                    transaction_type = ?GOLD_TRANSFER_TX_TYPE_IN_GAME,
+                    transaction_id = TransactionId,
+                    receipt = ReceiptData,
+                    player_id = UserId,
+                    device_id = User#usr_user.device_id,
+                    wallet_addr = <<>>,
+                    gold = Amount,
+                    status = 1,
+                    error_tag = <<>>,
+                    receive_game_id = GameId,
+                    receive_time = NowDateTime,
+                    update_time = NowDateTime},
+    usr_gold_transfer:set_one(TransferR),
+    RoleGold = run_role_gold:get_one({GameId, UserId}),
+
+    run_data:trans_commit(),
+    {ok, RoleGold#run_role_gold.gold}
+
+  catch
+    throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+        run_data:trans_rollback(),
+        throw({ErrNo, ErrMsg});
+    _:ExceptionErr ->
+        run_data:trans_rollback(),
+        ?ERR("transfer_coin_in_game exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
