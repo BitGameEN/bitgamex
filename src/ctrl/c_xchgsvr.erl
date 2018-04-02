@@ -31,7 +31,7 @@ transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
     #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr, device_id = DeviceId} = usr_user:get_one(UserId),
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
     lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
-    lib_role_gold:add_gold(UserId, -Amount0),
+    lib_role_gold:add_gold(UserId, GameId, -Amount0),
     TransactionId = lib_user_gold_transfer:gen_uuid(),
     NowDateTime = util:now_datetime_str(),
     TransferR = #usr_gold_transfer{
@@ -83,7 +83,7 @@ transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
         fun(JsonObject) ->
             case lists:keyfind(<<"succ">>, 1, JsonObject) of
                 {_, 0} -> % 失败
-                    lib_role_gold:add_gold(UserId, Amount0), % 返回游戏币
+                    lib_role_gold:add_gold(UserId, GameId, Amount0), % 返回游戏币
                     ErrNo = case lists:keyfind(<<"errno">>, 1, JsonObject) of
                                 {_, ErrNo_} ->  ErrNo_;
                                 false -> ?ERRNO_UNIDENTIFIED
@@ -115,7 +115,7 @@ transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
                 ?ERRNO_HTTP_REQ_TIMEOUT ->
                     % 超时情况下不能确认是否已经发到对端并处理完成，所以不能返回游戏币
                     httpc_proxy:queue_request(Url, get, Params, Callback);
-                _ -> lib_role_gold:add_gold(UserId, Amount0) % 返回游戏币
+                _ -> lib_role_gold:add_gold(UserId, GameId, Amount0) % 返回游戏币
             end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, Rs),
             throw({ErrNo, ErrMsg});

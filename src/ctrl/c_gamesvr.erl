@@ -135,8 +135,8 @@ transfer_coin_in_game(GameId, UserId, DstUserId, Amount, ReceiptData) ->
 
     User = usr_user:get_one(UserId),
     lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
-    lib_role_gold:add_gold(UserId, -Amount),
-    lib_role_gold:add_gold(DstUserId, Amount * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME))),
+    lib_role_gold:add_gold(UserId, GameId, -Amount),
+    lib_role_gold:add_gold(DstUserId, GameId, Amount * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME))),
     NowDateTime = util:now_datetime_str(),
     TransactionId = integer_to_list(UserId) ++ "_" ++ integer_to_list(DstUserId) ++ "_" ++ integer_to_list(util:longunixtime()),
     TransferR = #usr_gold_transfer{
