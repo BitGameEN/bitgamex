@@ -51,8 +51,8 @@ cache_lock_key(PlayerId) ->
     % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
 
-save(#run_role_gold{player_id = PlayerId} = RoleGold) ->
-    OldRoleGold = run_role_gold:get_one(PlayerId),
+save(#run_role_gold{key_id = KeyId, player_id = PlayerId} = RoleGold) ->
+    OldRoleGold = run_role_gold:get_one(KeyId),
     GoldDelta = RoleGold#run_role_gold.gold - OldRoleGold#run_role_gold.gold,
     case GoldDelta of
         0 -> void;
