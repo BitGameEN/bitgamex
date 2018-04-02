@@ -28,10 +28,20 @@ CREATE TABLE `game` (
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
   `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
   `hard_coef` float NOT NULL DEFAULT '1' COMMENT '难度系数，难度高给分紧的：> 1，难度低给分松的：< 1，其余：= 1',
-  `reclaimed_gold` double NOT NULL DEFAULT '0' COMMENT '游戏回收的总金币数',
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';
+
+-- ----------------------------
+--  Table structure for `game_reclaimed_gold`
+-- ----------------------------
+DROP TABLE IF EXISTS `game_reclaimed_gold`;
+CREATE TABLE `game_reclaimed_gold` (
+  `game_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '游戏id',
+  `gold` double NOT NULL DEFAULT '0' COMMENT '游戏回收的总金币数',
+  `time` int(11) NOT NULL DEFAULT '0' COMMENT '时间戳',
+  PRIMARY KEY (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏回收金币';
 
 -- ----------------------------
 --  Table structure for `global_config`

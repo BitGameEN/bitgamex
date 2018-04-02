@@ -9,13 +9,21 @@
 -include("record_run_role_gold_to_draw.hrl").
 -include("record_log_gold_to_draw.hrl").
 
+-define(MAX_SIZE_GOLD_LIST, 20).
 
 add_gold_to_draw(PlayerId, GameId, GoldListToDraw) when is_list(GoldListToDraw) ->
     {true, Cas} = lock(PlayerId),
     try
         RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
         OldGoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
-        NewGoldList = GoldListToDraw ++ OldGoldList,
+        NewGoldList = case length(OldGoldList) < ?MAX_SIZE_GOLD_LIST of
+                          true -> GoldListToDraw ++ OldGoldList;
+                          false ->
+                              [Head | RestList] = OldGoldList,
+                              SumGold = lists:sum([V || {_, V} <- [Head | GoldListToDraw]]),
+                              MaxTime = lists:max([T || {T, _} <- GoldListToDraw]),
+                              [{MaxTime, SumGold} | RestList]
+                      end,
         save(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList}),
         unlock(PlayerId, Cas),
         ok
@@ -61,11 +69,11 @@ save(#run_role_gold_to_draw{game_id = GameId, player_id = PlayerId, gold_list = 
                     delta = GoldDelta,
                     old_value = OldGoldToDraw,
                     new_value = NewGoldToDraw,
-                    drain_type = case get(gold_drain_type) of undefined -> <<>>; V -> V end,
-                    drain_id = case get(gold_drain_id) of undefined -> 0; V -> V end,
-                    drain_count = case get(gold_drain_count) of undefined -> 0; V -> V end,
+                    drain_type = case get(role_gold_to_draw_drain_type) of undefined -> <<>>; V -> V end,
+                    drain_id = case get(role_gold_to_draw_drain_id) of undefined -> 0; V -> V end,
+                    drain_count = case get(role_gold_to_draw_drain_count) of undefined -> 0; V -> V end,
                     time = util:unixtime(),
-                    call_flow = get_call_flow(get(gold_drain_type))
+                    call_flow = get_call_flow(get(role_gold_to_draw_drain_type))
                 },
             spawn(fun() -> log_gold_to_draw:set_one(R) end)
     end,
@@ -81,14 +89,14 @@ get_call_flow(DrainType) ->
     <<>>.
 
 put_gold_drain_type_and_drain_id(DrainType, DrainId, DrainCount) ->
-    put(gold_drain_type, DrainType),
-    put(gold_drain_id, DrainId),
-    put(gold_drain_count, DrainCount),
+    put(role_gold_to_draw_drain_type, DrainType),
+    put(role_gold_to_draw_drain_id, DrainId),
+    put(role_gold_to_draw_drain_count, DrainCount),
     ok.
 
 clear_gold_drain_type_and_drain_id() ->
-    erase(gold_drain_type),
-    erase(gold_drain_id),
-    erase(gold_drain_count),
+    erase(role_gold_to_draw_drain_type),
+    erase(role_gold_to_draw_drain_id),
+    erase(role_gold_to_draw_drain_count),
     ok.
 

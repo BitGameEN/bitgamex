@@ -39,7 +39,53 @@ CREATE TABLE `gold` (
   KEY `drain_type` (`drain_type`,`game_id`) USING BTREE,
   KEY `drain_type_and_id` (`drain_type`,`drain_id`,`game_id`) USING BTREE,
   KEY `game_id` (`game_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='金币记录';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='角色金币记录';
+
+-- ----------------------------
+--  Table structure for `gold_on_user`
+-- ----------------------------
+DROP TABLE IF EXISTS `gold_on_user`;
+CREATE TABLE `gold_on_user` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
+  `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
+  `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
+  `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
+  `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
+  `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
+  `drain_type` varchar(50) NOT NULL DEFAULT '' COMMENT '来源类型',
+  `drain_id` int(11) NOT NULL DEFAULT '0' COMMENT '来源相关id，比如买道具，则为道具id',
+  `drain_count` double NOT NULL DEFAULT '0' COMMENT '来源相关id对应的数量，比如买道具，买了多少个',
+  `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '时间戳',
+  `call_flow` varchar(256) NOT NULL DEFAULT '' COMMENT '调用上下文',
+  PRIMARY KEY (`id`),
+  KEY `player_id` (`player_id`),
+  KEY `time` (`time`),
+  KEY `drain_type` (`drain_type`,`game_id`) USING BTREE,
+  KEY `drain_type_and_id` (`drain_type`,`drain_id`,`game_id`) USING BTREE,
+  KEY `game_id` (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户金币记录';
+
+-- ----------------------------
+--  Table structure for `gold_reclaimed`
+-- ----------------------------
+DROP TABLE IF EXISTS `gold_reclaimed`;
+CREATE TABLE `gold_reclaimed` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
+  `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
+  `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
+  `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
+  `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
+  `drain_type` varchar(50) NOT NULL DEFAULT '' COMMENT '来源类型',
+  `drain_id` int(11) NOT NULL DEFAULT '0' COMMENT '来源相关id，比如买道具，则为道具id',
+  `drain_count` double NOT NULL DEFAULT '0' COMMENT '来源相关id对应的数量，比如买道具，买了多少个',
+  `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '时间戳',
+  `call_flow` varchar(256) NOT NULL DEFAULT '' COMMENT '调用上下文',
+  PRIMARY KEY (`id`),
+  KEY `time` (`time`),
+  KEY `drain_type` (`drain_type`,`game_id`) USING BTREE,
+  KEY `drain_type_and_id` (`drain_type`,`drain_id`,`game_id`) USING BTREE,
+  KEY `game_id` (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏回收金币记录';
 
 -- ----------------------------
 --  Table structure for `gold_to_draw`
@@ -63,7 +109,7 @@ CREATE TABLE `gold_to_draw` (
   KEY `drain_type` (`drain_type`,`game_id`) USING BTREE,
   KEY `drain_type_and_id` (`drain_type`,`drain_id`,`game_id`) USING BTREE,
   KEY `game_id` (`game_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='待领金币记录';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='角色待领金币记录';
 
 -- ----------------------------
 --  Table structure for `player_login`

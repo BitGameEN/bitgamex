@@ -50,7 +50,8 @@ transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
                     receive_time = NowDateTime,
                     update_time = NowDateTime},
     usr_gold_transfer:set_one(TransferR),
-    Amount = Amount0 * (1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG)),
+    TransferDiscountToXchg = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG),
+    Amount = Amount0 * (1 - TransferDiscountToXchg),
     % 参数串：
     % 发送到交易所：transaction_id=xx&game_uid=xx&exchange_accid=xx&amount=xx&time=xx
     % 发送到钱包：transaction_id=xx&game_uid=xx&exchange_accid=xx&wallet_address=xx&amount=xx&time=xx
@@ -102,6 +103,7 @@ transfer_gold(TransferType, GameId, UserId, Amount0, ReceiptData) ->
                         end,
                     lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, Amount0}),
                     RoleGold = run_role_gold:get_one({GameId, UserId}),
+                    lib_game:add_reclaimed_gold(GameId, Amount0 * TransferDiscountToXchg),
                     {ok, RoleGold#run_role_gold.gold, Balance}
             end
         end,

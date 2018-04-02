@@ -63,11 +63,11 @@ save(#run_role_gold{key_id = KeyId, player_id = PlayerId} = RoleGold) ->
                     delta = GoldDelta,
                     old_value = OldRoleGold#run_role_gold.gold,
                     new_value = RoleGold#run_role_gold.gold,
-                    drain_type = case get(gold_drain_type) of undefined -> <<>>; V -> V end,
-                    drain_id = case get(gold_drain_id) of undefined -> 0; V -> V end,
-                    drain_count = case get(gold_drain_count) of undefined -> 0; V -> V end,
+                    drain_type = case get(role_gold_drain_type) of undefined -> <<>>; V -> V end,
+                    drain_id = case get(role_gold_drain_id) of undefined -> 0; V -> V end,
+                    drain_count = case get(role_gold_drain_count) of undefined -> 0; V -> V end,
                     time = util:unixtime(),
-                    call_flow = get_call_flow(get(gold_drain_type))
+                    call_flow = get_call_flow(get(role_gold_drain_type))
                 },
             spawn(fun() -> log_gold:set_one(R) end)
     end,
@@ -83,14 +83,14 @@ get_call_flow(DrainType) ->
     <<>>.
 
 put_gold_drain_type_and_drain_id(DrainType, DrainId, DrainCount) ->
-    put(gold_drain_type, DrainType),
-    put(gold_drain_id, DrainId),
-    put(gold_drain_count, DrainCount),
+    put(role_gold_drain_type, DrainType),
+    put(role_gold_drain_id, DrainId),
+    put(role_gold_drain_count, DrainCount),
     ok.
 
 clear_gold_drain_type_and_drain_id() ->
-    erase(gold_drain_type),
-    erase(gold_drain_id),
-    erase(gold_drain_count),
+    erase(role_gold_drain_type),
+    erase(role_gold_drain_id),
+    erase(role_gold_drain_count),
     ok.
 

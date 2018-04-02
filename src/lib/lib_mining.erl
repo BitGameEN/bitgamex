@@ -34,6 +34,7 @@ distribute_game_delta_balances(Requests, DurationSeconds) ->
                       true -> DistributeL0;
                       false -> [{K, Quota * V / Total, T} || {K, V, T} <- DistributeL0]
                   end,
+    lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_game_delta_balances, 0, 0),
     F = fun({UserId, GameId}, AddBalance, Time) ->
             lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, [{Time, AddBalance}])
         end,

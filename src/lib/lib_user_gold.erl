@@ -8,7 +8,7 @@
 -include("common.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
--include("record_log_gold.hrl").
+-include("record_log_gold_on_user.hrl").
 
 
 add_gold(PlayerId, DeltaGold) ->
@@ -58,19 +58,19 @@ save(#usr_user_gold{player_id = PlayerId} = UserGold) ->
         0 -> void;
         _ ->
             User = usr_user:get_one(PlayerId),
-            R = #log_gold{
+            R = #log_gold_on_user{
                     player_id = PlayerId,
                     game_id = User#usr_user.current_game_id,
                     delta = GoldDelta,
                     old_value = OldUserGold#usr_user_gold.gold,
                     new_value = UserGold#usr_user_gold.gold,
-                    drain_type = case get(gold_drain_type) of undefined -> <<>>; V -> V end,
-                    drain_id = case get(gold_drain_id) of undefined -> 0; V -> V end,
-                    drain_count = case get(gold_drain_count) of undefined -> 0; V -> V end,
+                    drain_type = case get(user_gold_drain_type) of undefined -> <<>>; V -> V end,
+                    drain_id = case get(user_gold_drain_id) of undefined -> 0; V -> V end,
+                    drain_count = case get(user_gold_drain_count) of undefined -> 0; V -> V end,
                     time = util:unixtime(),
-                    call_flow = get_call_flow(get(gold_drain_type))
+                    call_flow = get_call_flow(get(user_gold_drain_type))
                 },
-            spawn(fun() -> log_gold:set_one(R) end)
+            spawn(fun() -> log_gold_on_user:set_one(R) end)
     end,
     usr_user_gold:set_one(UserGold#usr_user_gold{time = util:unixtime()}).
 
@@ -84,14 +84,14 @@ get_call_flow(DrainType) ->
     <<>>.
 
 put_gold_drain_type_and_drain_id(DrainType, DrainId, DrainCount) ->
-    put(gold_drain_type, DrainType),
-    put(gold_drain_id, DrainId),
-    put(gold_drain_count, DrainCount),
+    put(user_gold_drain_type, DrainType),
+    put(user_gold_drain_id, DrainId),
+    put(user_gold_drain_count, DrainCount),
     ok.
 
 clear_gold_drain_type_and_drain_id() ->
-    erase(gold_drain_type),
-    erase(gold_drain_id),
-    erase(gold_drain_count),
+    erase(user_gold_drain_type),
+    erase(user_gold_drain_id),
+    erase(user_gold_drain_count),
     ok.
 
