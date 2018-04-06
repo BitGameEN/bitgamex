@@ -8,8 +8,8 @@ public class ServerVO{
 		public int uid;
 		public string token;
 		public string game_data;
-		public float role_balance;
-		public float user_balance;
+		public string role_balance;
+		public string user_balance;
 		public string exchange_accid;
 		public string wallet_addr;
 	}
@@ -17,19 +17,19 @@ public class ServerVO{
 	public class GetGameVO: ErrorArg{
 		public int succ;
 		public string game_data;
-		public float role_balance;
+		public string role_balance;
 	}
 
 	public class SaveGameVO: ErrorArg{
 		public int succ;
 		public string game_data;
-		public float role_balance;
+		public string role_balance;
 		public float f_res;
 	}
 
 	public class TransferCoinInGameVO: ErrorArg{
 		public int succ;
-		public float role_balance;
+		public string role_balance;
 	}
 
 	public class BindExchangeAccidVO: ErrorArg{
@@ -39,7 +39,7 @@ public class ServerVO{
 
 	public class TransferCoinToExchangeVO: ErrorArg{
 		public int succ;
-		public float role_balance;
+		public string role_balance;
 		public float exchange_balance;
 	}
 
@@ -50,7 +50,7 @@ public class ServerVO{
 
 	public class TransferCoinToWalletVO: ErrorArg{
 		public int succ;
-		public float role_balance;
+		public string role_balance;
 		public float exchange_balance;
 	}
 

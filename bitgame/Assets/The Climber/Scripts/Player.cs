@@ -3,6 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Player{
-	public float role_balance;
-	public float user_balance;
+	public string role_balance;
+	public string user_balance;
 }
