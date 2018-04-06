@@ -60,7 +60,7 @@ gatesvr_start() ->
 gatesvr_stop() ->
     try
         cowboy:stop_listener(https_listener), % 停止监听
-        wait(),
+        wait(?SVRTYPE_GATE),
         ok = stop_applications(?GATESVR_APPS)
     after
         init:stop() % 能停掉heart
@@ -82,7 +82,7 @@ gamesvr_start() ->
 %%停止游戏服
 gamesvr_stop() ->
     try
-        wait(),
+        wait(?SVRTYPE_GAME),
         ok = stop_applications(?GAMESVR_APPS),
         ok = timer2:stop()
     after
@@ -112,37 +112,40 @@ xchgsvr_start() ->
 xchgsvr_stop() ->
     try
         cowboy:stop_listener(https_listener), % 停止监听
-        wait(),
+        wait(?SVRTYPE_XCHG),
         ok = stop_applications(?XCHGSVR_APPS)
     after
         init:stop() % 能停掉heart
     end.
 
-wait() ->
-    wait(0, 2).
+wait(SvrType) ->
+    wait(0, 2, SvrType).
 
 % Count：空闲状态（没有数据库操作）的计数；CountMax：连续CountMax次空闲状态，这时候就可以结束了
-wait(Count, CountMax) ->
+wait(Count, CountMax, SvrType) ->
     timer:sleep(5000),
-    DBBusyNum = get_db_busy_num(),
+    DBBusyNum = get_db_busy_num(SvrType),
     util:launch_log("db busy num = ~w~n", [DBBusyNum]),
     case DBBusyNum > 0 of
         true ->
-            wait(0, CountMax);
+            wait(0, CountMax, SvrType);
         false ->
             NewCount = Count + 1,
             case NewCount < CountMax of
                 true ->
-                    wait(NewCount, CountMax);
+                    wait(NewCount, CountMax, SvrType);
                 false ->
                     util:launch_log("~nyou can close safely now~n~n", []),
                     void
             end
     end.
 
-get_db_busy_num() ->
-    emysql_conn_mgr:get_wait_num(?DB_RUN) + emysql_conn_mgr:get_lock_num(?DB_RUN) +
-        emysql_conn_mgr:get_wait_num(?DB_LOG) + emysql_conn_mgr:get_lock_num(?DB_LOG) +
+get_db_busy_num(SvrType) ->
+    case SvrType of
+        ?SVRTYPE_GAME ->
+            emysql_conn_mgr:get_wait_num(?DB_RUN) + emysql_conn_mgr:get_lock_num(?DB_RUN);
+        _ -> 0
+    end + emysql_conn_mgr:get_wait_num(?DB_LOG) + emysql_conn_mgr:get_lock_num(?DB_LOG) +
         emysql_conn_mgr:get_wait_num(?DB_USR) + emysql_conn_mgr:get_lock_num(?DB_USR) +
         emysql_conn_mgr:get_overflow_num().
 
