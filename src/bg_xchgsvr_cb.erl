@@ -83,7 +83,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
             false -> throw({?ERRNO_VERIFY_FAILED, <<"sign unmatched">>})
         end,
     
-        % transaction_id=xx&exchange_accid=xx&game_uid=xx&amount=xx&time=xx
+        % transaction_id=xx&exchange_accid=xx&game_uid=xx&token_symbol=xx&amount=xx&time=xx
         ReceiptData = util:url_decode(Param),
         ParamList = string:tokens(binary_to_list(ReceiptData), [$&]),
         ParamPairs = [begin
@@ -95,6 +95,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         TransactionId = proplists:get_value("transaction_id", ParamPairs), ?ASSERT(TransactionId =/= undefined),
         ExchangeAccid = proplists:get_value("exchange_accid", ParamPairs), ?ASSERT(ExchangeAccid =/= undefined),
         GameUidStr = proplists:get_value("game_uid", ParamPairs), ?ASSERT(GameUidStr =/= undefined),
+        GoldType = proplists:get_value("token_symbol", ParamPairs), ?ASSERT(GoldType =/= undefined),
         AmountStr = proplists:get_value("amount", ParamPairs), ?ASSERT(AmountStr =/= undefined),
         TimeStr = proplists:get_value("time", ParamPairs), ?ASSERT(TimeStr =/= undefined),
     
@@ -119,6 +120,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
                                 player_id = PlayerId,
                                 device_id = Usr#usr_user.device_id,
                                 wallet_addr = <<>>,
+                                gold_type = GoldType,
                                 gold = Amount,
                                 status = 0,
                                 error_tag = <<>>,
@@ -129,7 +131,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
                 Amount;
             [TransferGid] ->
                 % 参数中的PlayerId和之前记录的应该匹配，不匹配会有异常抛出
-                #usr_gold_transfer{status = Status, player_id = OldPlayerId, gold = OldAmount} = usr_gold_transfer:get_one(TransferGid),
+                #usr_gold_transfer{status = Status, player_id = OldPlayerId, gold_type = OldGoldType, gold = OldAmount} = usr_gold_transfer:get_one(TransferGid),
                 case Status of
                     0 -> void;
                     1 -> % 成功回调过
@@ -140,6 +142,12 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
                     false ->
                         ?ERR("exchange cb player_id unmatch: player_id=~p, old_player_id=~p, transfer_gid=~p~n", [PlayerId, OldPlayerId, TransferGid]),
                         throw({-2, <<"unmatched player_id">>})
+                end,
+                case OldGoldType =:= GoldType of
+                    true -> void;
+                    false ->
+                        ?ERR("exchange cb gold type unmatch: player_id=~p, transfer_gid=~p, old_gold_type=~p, now_gold_type=~p~n", [PlayerId, TransferGid, OldGoldType, GoldType]),
+                        throw({-3, <<"unmatched token_symbol">>})
                 end,
                 case OldAmount =:= Amount of
                     true -> void;
@@ -152,14 +160,14 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         run_data:trans_begin(),
         % 加金币
         lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, TransferAmount),
-        lib_user_gold:add_gold(PlayerId, TransferAmount),
+        lib_user_gold:add_gold(PlayerId, GoldType, TransferAmount),
         % 更新transfer记录
-        lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, TransferAmount}),
+        lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, TransferAmount}),
         run_data:trans_commit(),
         unlock(),
 
         UserGold = usr_user_gold:get_one(PlayerId),
-        cowboy_req:reply(200, #{}, lib_http:reply_body_succ(#{balance => UserGold#usr_user_gold.gold}), Req)
+        cowboy_req:reply(200, #{}, lib_http:reply_body_succ(#{balance => ?G(UserGold#usr_user_gold.gold, GoldType)}), Req)
 
     catch
         throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->

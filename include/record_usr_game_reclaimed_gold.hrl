@@ -6,6 +6,6 @@
 -record(usr_game_reclaimed_gold, {
 		key_id,
 		game_id = 0, % 游戏id
-		gold = 0, % 游戏回收的总金币数
+		gold = <<"">>, % 游戏回收的总金币数，json格式：{"bgx":数量, "btc":数量, "eth":数量, ...}
 		time = 0 % 时间戳
 }).

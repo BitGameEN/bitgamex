@@ -41,6 +41,7 @@ run() ->
 
 run(DbHost) ->
     init_db(DbHost),
+    gen("gold_type"),
     ok.
 
 run(DbHost, "all") ->

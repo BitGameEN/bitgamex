@@ -3,24 +3,40 @@
 %%% @Description: 角色金币相关处理
 %%%--------------------------------------
 -module(lib_role_gold).
--export([add_gold/3, put_gold_drain_type_and_drain_id/3]).
+-export([add_gold/4, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
 -include("record_run_role_gold.hrl").
 -include("record_log_gold.hrl").
 
-
-add_gold(PlayerId, GameId, DeltaGold) ->
+add_gold(PlayerId, GameId, GoldType, 0) ->
+    ok;
+add_gold(PlayerId, GameId, GoldType, DeltaGold) ->
     {true, Cas} = lock(PlayerId),
     try
         RoleGold = run_role_gold:get_one({GameId, PlayerId}),
-        OldGold = RoleGold#run_role_gold.gold,
+        RawGold = RoleGold#run_role_gold.gold,
+        OldGold = ?G(RawGold, GoldType),
         NewGold = OldGold + DeltaGold,
         case NewGold < 0 of
             true -> throw({?ERRNO_GOLD_NOT_ENOUGH, <<"gold not enough">>});
             false -> void
         end,
-        save(RoleGold#run_role_gold{gold = NewGold}),
+        run_role_gold:set_one(RoleGold#run_role_gold{gold = ?G(RawGold, GoldType, NewGold), time = util:unixtime()}),
+        R = #log_gold{
+                player_id = PlayerId,
+                game_id = RoleGold#run_role_gold.game_id,
+                gold_type = GoldType,
+                delta = DeltaGold,
+                old_value = OldGold,
+                new_value = NewGold,
+                drain_type = case get(role_gold_drain_type) of undefined -> <<>>; V -> V end,
+                drain_id = case get(role_gold_drain_id) of undefined -> 0; V -> V end,
+                drain_count = case get(role_gold_drain_count) of undefined -> 0; V -> V end,
+                time = util:unixtime(),
+                call_flow = get_call_flow(get(role_gold_drain_type))
+            },
+        spawn(fun() -> log_gold:set_one(R) end),
         unlock(PlayerId, Cas),
         ok
     catch
@@ -50,28 +66,6 @@ unlock(PlayerId, Cas) ->
 cache_lock_key(PlayerId) ->
     % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
-
-save(#run_role_gold{key_id = KeyId, player_id = PlayerId} = RoleGold) ->
-    OldRoleGold = run_role_gold:get_one(KeyId),
-    GoldDelta = RoleGold#run_role_gold.gold - OldRoleGold#run_role_gold.gold,
-    case GoldDelta of
-        0 -> void;
-        _ ->
-            R = #log_gold{
-                    player_id = PlayerId,
-                    game_id = RoleGold#run_role_gold.game_id,
-                    delta = GoldDelta,
-                    old_value = OldRoleGold#run_role_gold.gold,
-                    new_value = RoleGold#run_role_gold.gold,
-                    drain_type = case get(role_gold_drain_type) of undefined -> <<>>; V -> V end,
-                    drain_id = case get(role_gold_drain_id) of undefined -> 0; V -> V end,
-                    drain_count = case get(role_gold_drain_count) of undefined -> 0; V -> V end,
-                    time = util:unixtime(),
-                    call_flow = get_call_flow(get(role_gold_drain_type))
-                },
-            spawn(fun() -> log_gold:set_one(R) end)
-    end,
-    run_role_gold:set_one(RoleGold#run_role_gold{time = util:unixtime()}).
 
 get_call_flow(undefined) ->
     {current_stacktrace, Stack} = erlang:process_info(self(), current_stacktrace),

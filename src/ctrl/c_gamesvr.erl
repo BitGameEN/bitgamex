@@ -5,7 +5,7 @@
 -module(c_gamesvr).
 -export([get_game_data/4,
          save_game_data/3,
-         transfer_coin_in_game/5]).
+         transfer_coin_in_game/6]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -37,7 +37,7 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                                     last_login_time = Now,
                                     last_login_ip = ?T2B(PeerIp),
                                     time = Now}),
-                        run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = 0, time = Now}),
+                        run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = <<"{}">>, time = Now}),
                         run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId, gold_list = [], time = Now});
                     false -> void
                 end,
@@ -80,9 +80,10 @@ save_game_data(GameId, UserId, GameData) ->
     Now = util:unixtime(),
     #usr_game{balance_lua_f = BalanceLuaF} = usr_game:get_one(GameId),
     #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
-    DeltaBalance =
+    % todo：先假设游戏每次只给一种币，且只给BGX，后面再扩展
+    {GoldType, DeltaGold} =
         case BalanceLuaF of
-            <<>> -> 0;
+            <<>> -> {?DEFAULT_GOLD_TYPE, 0};
             _ ->
                 % 结算脚本函数，比如：
                 %package.path = package.path .. ";../priv/?.lua;"
@@ -96,22 +97,22 @@ save_game_data(GameId, UserId, GameData) ->
                 LuaState0 = luerl:init(),
                 {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
-                V
+                {?DEFAULT_GOLD_TYPE, V}
         end,
-    
-    case DeltaBalance > 0 of
+
+    case DeltaGold > 0 of
         true ->
-            mod_distributor:req_add_balance(#add_balane_req{uid = UserId, game_id = GameId, delta_balance = DeltaBalance, time = Now});
+            mod_distributor:req_add_balance(#add_gold_req{uid = UserId, game_id = GameId, gold_type = GoldType, delta_gold = DeltaGold, time = Now});
         false ->
-            lib_role_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaBalance),
-            lib_role_gold:add_gold(UserId, GameId, DeltaBalance),
+            lib_role_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaGold),
+            lib_role_gold:add_gold(UserId, GameId, GoldType, DeltaGold),
             run_role:set_one(Role#run_role{game_data = GameData, old_game_data = OldGameData, time = Now})
     end,
 
     RoleGold = run_role_gold:get_one({GameId, UserId}),
 
     run_data:trans_commit(),
-    {ok, GameData, RoleGold#run_role_gold.gold, DeltaBalance}
+    {ok, GameData, RoleGold#run_role_gold.gold, DeltaGold}
 
   catch
     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
@@ -123,7 +124,7 @@ save_game_data(GameId, UserId, GameData) ->
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
-transfer_coin_in_game(GameId, UserId, DstUserId, Amount, ReceiptData) ->
+transfer_coin_in_game(GameId, UserId, DstUserId, GoldType, Amount, ReceiptData) ->
   try
     run_data:trans_begin(),
 
@@ -136,9 +137,10 @@ transfer_coin_in_game(GameId, UserId, DstUserId, Amount, ReceiptData) ->
     TransferDiscountInGame = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_IN_GAME),
     User = usr_user:get_one(UserId),
     lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
-    lib_role_gold:add_gold(UserId, GameId, -Amount),
-    lib_role_gold:add_gold(DstUserId, GameId, Amount * (1 - TransferDiscountInGame)),
-    lib_game:add_reclaimed_gold(GameId, Amount * TransferDiscountInGame),
+    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount),
+    lib_role_gold:add_gold(DstUserId, GameId, GoldType, Amount * (1 - TransferDiscountInGame)),
+    lib_game:put_gold_drain_type_and_drain_id(gold_transfer, ?GOLD_TRANSFER_TYPE_IN_GAME, Amount),
+    lib_game:add_reclaimed_gold(GameId, GoldType, Amount * TransferDiscountInGame),
     NowDateTime = util:now_datetime_str(),
     TransactionId = integer_to_list(UserId) ++ "_" ++ integer_to_list(DstUserId) ++ "_" ++ integer_to_list(util:longunixtime()),
     TransferR = #usr_gold_transfer{
@@ -149,6 +151,7 @@ transfer_coin_in_game(GameId, UserId, DstUserId, Amount, ReceiptData) ->
                     player_id = UserId,
                     device_id = User#usr_user.device_id,
                     wallet_addr = <<>>,
+                    gold_type = GoldType,
                     gold = Amount,
                     status = 1,
                     error_tag = <<>>,

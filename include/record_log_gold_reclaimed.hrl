@@ -7,6 +7,7 @@
 		key_id,
 		id = 0, % 自增id
 		game_id = 0, % 游戏id
+		gold_type = <<"">>, % 币种：bgx, btc, eth, ...
 		delta = 0, % 变化量，负数表示消耗
 		old_value = 0, % 旧值
 		new_value = 0, % 新值

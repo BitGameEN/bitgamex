@@ -6,6 +6,7 @@
 -export([init/2]).
 
 -include("common.hrl").
+-include("gameConfig.hrl").
 -include("record_usr_game.hrl").
 -include("record_usr_user.hrl").
 
@@ -201,14 +202,14 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_save_game([User, GameData]);
 
-% https://api.bitgamex.com/?a=transfer_coin_in_game&uid=xx&game_id=xx&token=xx&dst_uid=xx&amount=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=transfer_coin_in_game&uid=xx&game_id=xx&token=xx&dst_uid=xx&coin_type=xx&amount=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, dst_uid, amount, time, sign], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, dst_uid := DstUidBin0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, dst_uid, coin_type, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, dst_uid := DstUidBin0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_in_game: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, Token0, DstUidBin0, AmountBin0, TimeBin0, Sign0],
-    [UidBin, GameIdBin, Token, DstUidBin, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
-    case lists:member(<<>>, [UidBin, GameIdBin, Token, DstUidBin, AmountBin, TimeBin, Sign]) of
+    L = [UidBin0, GameIdBin0, Token0, DstUidBin0, GoldType0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, DstUidBin, GoldType, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, DstUidBin, GoldType, AmountBin, TimeBin, Sign]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
@@ -220,6 +221,10 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     case Uid =:= DstUid of
         true -> throw({-1, <<"wrong dst uid">>});
         false -> void
+    end,
+    case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
+        true -> void
     end,
     case Amount < 0.00000001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
@@ -234,7 +239,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, DstUidBin/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, DstUidBin/binary, GoldType/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
     MD5Val = util:md5(MD5Bin),
     case Sign =:= list_to_binary(MD5Val) of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
@@ -251,7 +256,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
         true -> void
     end,
     lock_user(Uid),
-    c_gatesvr:api_transfer_coin_in_game([User, DstUser, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+    c_gatesvr:api_transfer_coin_in_game([User, DstUser, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 % https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
@@ -327,14 +332,14 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_bind_wallet([User, WalletAddr]);
 
-% https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, amount, time, sign], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_to_exchange: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
-    [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
-    case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
+    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
@@ -342,6 +347,10 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
     GameId = binary_to_integer(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
+    case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
+        true -> void
+    end,
     case Amount < 0.00000001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
@@ -355,7 +364,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
     MD5Val = util:md5(MD5Bin),
     case Sign =:= list_to_binary(MD5Val) of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
@@ -371,16 +380,16 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         _ -> void
     end,
     lock_user(Uid),
-    c_gatesvr:api_transfer_coin_to_exchange([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+    c_gatesvr:api_transfer_coin_to_exchange([User, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
-% https://api.bitgamex.com/?a=transfer_coin_to_wallet&uid=xx&game_id=xx&token=xx&amount=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=transfer_coin_to_wallet&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, amount, time, sign], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_to_wallet: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, Token0, AmountBin0, TimeBin0, Sign0],
-    [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
-    case lists:member(<<>>, [UidBin, GameIdBin, Token, AmountBin, TimeBin, Sign]) of
+    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
@@ -388,6 +397,10 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     GameId = binary_to_integer(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
+    case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
+        true -> void
+    end,
     case Amount < 0.00000001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
@@ -401,7 +414,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
     MD5Val = util:md5(MD5Bin),
     case Sign =:= list_to_binary(MD5Val) of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
@@ -421,7 +434,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         _ -> void
     end,
     lock_user(Uid),
-    c_gatesvr:api_transfer_coin_to_wallet([User, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+    c_gatesvr:api_transfer_coin_to_wallet([User, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).

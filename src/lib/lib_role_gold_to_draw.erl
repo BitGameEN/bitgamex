@@ -3,7 +3,7 @@
 %%% @Description: 角色待领金币相关处理
 %%%--------------------------------------
 -module(lib_role_gold_to_draw).
--export([add_gold_to_draw/3, put_gold_drain_type_and_drain_id/3]).
+-export([add_gold_to_draw/4, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
 -include("record_run_role_gold_to_draw.hrl").
@@ -11,20 +11,41 @@
 
 -define(MAX_SIZE_GOLD_LIST, 20).
 
-add_gold_to_draw(PlayerId, GameId, GoldListToDraw) when is_list(GoldListToDraw) ->
+% 调用者保证T不一样
+add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0) when is_list(GoldListToDraw0) ->
     {true, Cas} = lock(PlayerId),
     try
+        GoldListToDraw = [{T, GoldType, V} || {T, V} <- GoldListToDraw0],
         RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
         OldGoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
+        OldGoldListOfTheType = [{T, V} || {T, GT, V} <- OldGoldList, GT =:= GoldType],
         NewGoldList = case length(OldGoldList) < ?MAX_SIZE_GOLD_LIST of
                           true -> GoldListToDraw ++ OldGoldList;
                           false ->
-                              [Head | RestList] = OldGoldList,
-                              SumGold = lists:sum([V || {_, V} <- [Head | GoldListToDraw]]),
-                              MaxTime = lists:max([T || {T, _} <- GoldListToDraw]),
-                              [{MaxTime, SumGold} | RestList]
+                              [{HeadT, HeadV} | _] = OldGoldListOfTheType,
+                              RestGoldList = lists:keydelete(HeadT, 1, OldGoldList),
+                              SumGold = lists:sum([V || {_, V} <- [{HeadT, HeadV} | GoldListToDraw0]]),
+                              MaxTime = lists:max([T || {T, _} <- GoldListToDraw0]),
+                              [{MaxTime, GoldType, SumGold} | RestGoldList]
                       end,
-        save(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList}),
+        run_role_gold_to_draw:set_one(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList, time = util:unixtime()}),
+        OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldListOfTheType]),
+        DeltaGoldToDraw = lists:sum([V || {_, V} <- GoldListToDraw0]),
+        NewGoldToDraw = OldGoldToDraw + DeltaGoldToDraw,
+        R = #log_gold_to_draw{
+                player_id = PlayerId,
+                game_id = RoleGoldToDraw#run_role_gold_to_draw.game_id,
+                gold_type = GoldType,
+                delta = DeltaGoldToDraw,
+                old_value = OldGoldToDraw,
+                new_value = NewGoldToDraw,
+                drain_type = case get(role_gold_to_draw_drain_type) of undefined -> <<>>; V -> V end,
+                drain_id = case get(role_gold_to_draw_drain_id) of undefined -> 0; V -> V end,
+                drain_count = case get(role_gold_to_draw_drain_count) of undefined -> 0; V -> V end,
+                time = util:unixtime(),
+                call_flow = get_call_flow(get(role_gold_to_draw_drain_type))
+            },
+        spawn(fun() -> log_gold_to_draw:set_one(R) end),
         unlock(PlayerId, Cas),
         ok
     catch
@@ -54,30 +75,6 @@ unlock(PlayerId, Cas) ->
 cache_lock_key(PlayerId) ->
     % 仍旧用lock_user_gold
     list_to_binary(io_lib:format(<<"lock_user_gold_~p">>, [PlayerId])).
-
-save(#run_role_gold_to_draw{game_id = GameId, player_id = PlayerId, gold_list = NewGoldList} = RoleGoldToDraw) ->
-    #run_role_gold_to_draw{gold_list = OldGoldList} = run_role_gold_to_draw:get_one({GameId, PlayerId}),
-    OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldList]),
-    NewGoldToDraw = lists:sum([V || {_, V} <- NewGoldList]),
-    GoldDelta = NewGoldToDraw - OldGoldToDraw,
-    case GoldDelta of
-        0 -> void;
-        _ ->
-            R = #log_gold_to_draw{
-                    player_id = PlayerId,
-                    game_id = RoleGoldToDraw#run_role_gold_to_draw.game_id,
-                    delta = GoldDelta,
-                    old_value = OldGoldToDraw,
-                    new_value = NewGoldToDraw,
-                    drain_type = case get(role_gold_to_draw_drain_type) of undefined -> <<>>; V -> V end,
-                    drain_id = case get(role_gold_to_draw_drain_id) of undefined -> 0; V -> V end,
-                    drain_count = case get(role_gold_to_draw_drain_count) of undefined -> 0; V -> V end,
-                    time = util:unixtime(),
-                    call_flow = get_call_flow(get(role_gold_to_draw_drain_type))
-                },
-            spawn(fun() -> log_gold_to_draw:set_one(R) end)
-    end,
-    run_role_gold_to_draw:set_one(RoleGoldToDraw#run_role_gold_to_draw{time = util:unixtime()}).
 
 get_call_flow(undefined) ->
     {current_stacktrace, Stack} = erlang:process_info(self(), current_stacktrace),

@@ -53,7 +53,7 @@ code_change(_OldVsn, Status, _Extra) ->
 % 返回NewStatus
 distribute(#status{requests = Requests} = Status) ->
     try
-        lib_mining:distribute_game_delta_balances(Requests, ?TO_DISTRIBUTE_INTERVAL)
+        lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL)
     catch
         _:ErrMsg ->
             ?ERR("distributor failed:~n~p~n", [ErrMsg])

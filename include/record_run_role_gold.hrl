@@ -8,6 +8,6 @@
 		player_id = 0, % 用户id（玩家id）
 		ver = 0, % 数据结构版本
 		game_id = 0, % 游戏id
-		gold = 0, % 金币
+		gold = <<"">>, % 金币，json格式：{"bgx":数量, "btc":数量, "eth":数量, ...}
 		time = 0 % 更新时间戳
 }).

@@ -42,7 +42,7 @@ set_one(R0) when is_record(R0, usr_user_gold) ->
 				gold = Gold,
 				time = Time
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into user_gold(player_id,gold,time) values(~p,~p,~p); select last_insert_id()">>,
+			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into user_gold(player_id,gold,time) values(~p,'~s',~p); select last_insert_id()">>,
 				[Player_id, Gold, Time])),
 			R = R0#usr_user_gold{key_id = Insert_id, player_id = Insert_id},
 			cache:set(cache_key(R#usr_user_gold.key_id), R),

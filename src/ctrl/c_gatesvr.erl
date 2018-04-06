@@ -36,7 +36,7 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
                                                  create_time = Now,
                                                  time = Now},
                         Id = usr_user:set_one(ToCreateUser),
-                        usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = 0, time = Now}),
+                        usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
                         Id;
                     [Id|_] ->
                         Id
@@ -153,8 +153,8 @@ api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData
     {ok, #{game_data => GameData, role_balance => Balance, f_res => FRes}}.
 
 %% 转账游戏币给其他玩家的接口
-api_transfer_coin_in_game([#usr_user{current_game_id = GameId, id = UserId} = User, #usr_user{id = DstUserId} = DstUser, Amount, ReceiptData]) ->
-    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, transfer_coin_in_game, [GameId, UserId, DstUserId, Amount, ReceiptData]),
+api_transfer_coin_in_game([#usr_user{current_game_id = GameId, id = UserId} = User, #usr_user{id = DstUserId} = DstUser, GoldType, Amount, ReceiptData]) ->
+    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, transfer_coin_in_game, [GameId, UserId, DstUserId, GoldType, Amount, ReceiptData]),
     {ok, #{role_balance => RoleGold}}.
 
 %% 绑定 BIT.GAME 交易所账号的接口
@@ -168,12 +168,12 @@ api_bind_wallet([User, WalletAddr]) ->
     {ok, #{wallet_addr => WalletAddr}}.
 
 %% 转账游戏币给绑定的交易所账号的接口
-api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} = User, Amount, ReceiptData]) ->
-    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange, [GameId, UserId, Amount, ReceiptData]),
+api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, ReceiptData]) ->
+    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange, [GameId, UserId, GoldType, Amount, ReceiptData]),
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 
 %% 转账游戏币给绑定的钱包的接口
-api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = User, Amount, ReceiptData]) ->
-    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [GameId, UserId, Amount, ReceiptData]),
+api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, ReceiptData]) ->
+    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [GameId, UserId, GoldType, Amount, ReceiptData]),
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 

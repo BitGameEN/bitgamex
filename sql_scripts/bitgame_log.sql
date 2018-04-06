@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 03/11/2018 13:57:36 PM
+ Date: 04/04/2018 14:41:52 PM
 */
 
 SET NAMES utf8;
@@ -25,6 +25,7 @@ CREATE TABLE `gold` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
   `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
+  `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
   `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
   `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
@@ -49,6 +50,7 @@ CREATE TABLE `gold_on_user` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
   `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
+  `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
   `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
   `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
@@ -72,6 +74,7 @@ DROP TABLE IF EXISTS `gold_reclaimed`;
 CREATE TABLE `gold_reclaimed` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
+  `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
   `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
   `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',
@@ -95,6 +98,7 @@ CREATE TABLE `gold_to_draw` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
   `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
+  `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
   `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
   `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',

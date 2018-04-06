@@ -38,7 +38,7 @@ CREATE TABLE `game` (
 DROP TABLE IF EXISTS `game_reclaimed_gold`;
 CREATE TABLE `game_reclaimed_gold` (
   `game_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '游戏id',
-  `gold` double NOT NULL DEFAULT '0' COMMENT '游戏回收的总金币数',
+  `gold` text NOT NULL COMMENT '游戏回收的总金币数，json格式：{"BGX":数量, "BTC":数量, "ETH":数量, ...}',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '时间戳',
   PRIMARY KEY (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏回收金币';
@@ -68,6 +68,7 @@ CREATE TABLE `gold_transfer` (
   `device_id` varchar(50) NOT NULL DEFAULT '' COMMENT 'device id',
   `xchg_accid` varchar(100) NOT NULL DEFAULT '' COMMENT '交易所账号id',
   `wallet_addr` varchar(50) NOT NULL DEFAULT '' COMMENT '钱包地址',
+  `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
   `gold` double NOT NULL DEFAULT '0' COMMENT '金币',
   `status` int(11) NOT NULL DEFAULT '0' COMMENT '回调状态，0 - 未回调，1 - 已成功回调，-1 - 回调返回失败结果',
   `error_tag` varchar(512) NOT NULL DEFAULT '0' COMMENT '回调未成功时的错误号',
@@ -141,7 +142,7 @@ CREATE TABLE `user` (
 DROP TABLE IF EXISTS `user_gold`;
 CREATE TABLE `user_gold` (
   `player_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '用户id（玩家id）',
-  `gold` double NOT NULL DEFAULT '0' COMMENT '金币',
+  `gold` text NOT NULL COMMENT '金币，json格式：{"BGX":数量, "BTC":数量, "ETH":数量, ...}',
   `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家金币';

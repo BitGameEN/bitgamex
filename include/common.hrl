@@ -80,6 +80,13 @@
 -define(S2T(S), util:string_to_term(re:replace(S, "<[0-9]+\.[0-9]+\.[0-9]+>", "undefined", [global, {return,list}]))).
 -define(T2S(T), util:term_to_string(T)).
 
+% 金币的操作宏
+-define(G(RawGold, GoldType), lib_gold:gold(RawGold, GoldType)).
+-define(G(RawGold, GoldType, NewGoldValue), lib_gold:gold(RawGold, GoldType, NewGoldValue)).
+
+% 默认币种
+-define(DEFAULT_GOLD_TYPE, <<"BGX">>).
+
 % 特定的几个错误码定义
 -define(ERRNO_IP_BLOCKED, -999). % ip受限
 -define(ERRNO_MISSING_PARAM, -998). % 参数不全

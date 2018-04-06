@@ -16,7 +16,7 @@ update_transfer_log(TransactionType, TransactionId, Rs) ->
             R0 = usr_gold_transfer:get_one(TransferGid),
             NowDateTime = util:now_datetime_str(),
             R = case Rs of
-                    {ok, _} ->
+                    {ok, _, _} ->
                         R0#usr_gold_transfer{
                             status = 1,
                             error_tag = <<>>,

@@ -106,7 +106,7 @@ set_one(R0) when is_record(R0, run_role_gold) ->
 			} = R0,
 			R = R0#run_role_gold{key_id = {Game_id, Player_id}, ver = run_data_ver:newest_ver(run_role_gold)},
 			F = fun() ->
-					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_gold_~p(player_id,ver,game_id,gold,time) values(~p,~p,~p,~p,~p)">>,
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_gold_~p(player_id,ver,game_id,gold,time) values(~p,~p,~p,'~s',~p)">>,
 						[Game_id, Player_id, Ver, Game_id, Gold, Time])) end),
 					cache:set(cache_key(R#run_role_gold.key_id), R),
 					insert_ets(R)

@@ -42,7 +42,7 @@ CREATE TABLE `role_gold` (
   `player_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '用户id（玩家id）',
   `ver` int(11) NOT NULL DEFAULT '0' COMMENT '数据结构版本',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
-  `gold` double NOT NULL DEFAULT '0' COMMENT '金币',
+  `gold` text NOT NULL COMMENT '金币，json格式：{"BGX":数量, "BTC":数量, "ETH":数量, ...}',
   `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`,`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家金币';
@@ -55,7 +55,7 @@ CREATE TABLE `role_gold_to_draw` (
   `player_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '用户id（玩家id）',
   `ver` int(11) NOT NULL DEFAULT '0' COMMENT '数据结构版本',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
-  `gold_list` varchar(20480) NOT NULL DEFAULT '[]' COMMENT 'erlang，待领金币列表，格式：[{时间戳, 数量}, ...]',
+  `gold_list` varchar(20480) NOT NULL DEFAULT '[]' COMMENT 'erlang，待领金币列表，格式：[{时间戳, 币种, 数量}, ...]',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`,`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家待领金币';

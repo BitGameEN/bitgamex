@@ -5,10 +5,14 @@
 -include("record_usr_gold_transfer.hrl").
 -include("record_usr_global_config.hrl").
 -include("record_usr_game.hrl").
+-include("record_usr_game_reclaimed_gold.hrl").
 -include("record_run_role.hrl").
 -include("record_run_role_gold.hrl").
 -include("record_run_role_gold_to_draw.hrl").
 -include("record_log_player_login.hrl").
 -include("record_log_gold.hrl").
 -include("record_log_gold_to_draw.hrl").
+-include("record_log_gold_reclaimed.hrl").
+-include("record_log_gold_on_user.hrl").
+-include("record_cfg_gold_type.hrl").
 -compile(export_all).
