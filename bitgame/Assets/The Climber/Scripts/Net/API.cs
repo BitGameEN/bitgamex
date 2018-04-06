@@ -13,6 +13,8 @@ public class API{
 			return _instance;
 		}
 	}
+	private static string _coin_type = "BGX";
+
 	public void LoginGame(Action success,Action<ServerVO.LoginGameVO> fail){
 		var args = new Dictionary<string,object>();
 		args["a"] = "login_game";
@@ -95,10 +97,11 @@ public class API{
 		args["game_id"] = App.Instance.game.game_id;
 		args["token"] = App.Instance.token;
 		args["dst_uid"] = toId;
+		args["coin_type"] = _coin_type;
 		args["amount"] = amount;
 		args["time"] = App.Instance.time;
 		args["sign"] = Encrypt.Md5(App.Instance.uid+""+
-		App.Instance.game.game_id+""+App.Instance.token+""+toId+""+amount+""+args["time"]+App.key);
+			App.Instance.game.game_id+""+App.Instance.token+""+toId+""+_coin_type+amount+""+args["time"]+App.key);
 		Server.Instance.Get<ServerVO.TransferCoinInGameVO>(args,(receive)=>{
 			if(receive.succ == 1){
 				App.Instance.role_balance = receive.role_balance;
@@ -138,9 +141,10 @@ public class API{
 		args["uid"] = App.Instance.uid;
 		args["game_id"] = App.Instance.game.game_id;
 		args["token"] = App.Instance.token;
+		args["coin_type"] = _coin_type;
 		args["amount"] = amount;
 		args["time"] = App.Instance.time;
-		args["sign"] = Encrypt.Md5(App.Instance.uid+""+App.Instance.game.game_id+""+App.Instance.token+amount+args["time"]+App.key);
+		args["sign"] = Encrypt.Md5(App.Instance.uid+""+App.Instance.game.game_id+""+App.Instance.token+_coin_type+amount+args["time"]+App.key);
 		Server.Instance.Get<ServerVO.TransferCoinToExchangeVO>(args,(receive)=>{
 			if(receive.succ == 1){
 				App.Instance.role_balance = receive.role_balance;
@@ -181,9 +185,10 @@ public class API{
 		args["uid"] = App.Instance.uid;
 		args["game_id"] = App.Instance.game.game_id;
 		args["token"] = App.Instance.token;
+		args["coin_type"] = _coin_type;
 		args["amount"] = amount;
 		args["time"] = App.Instance.time;
-		args["sign"] = Encrypt.Md5(App.Instance.uid+""+App.Instance.game.game_id+""+App.Instance.token+amount+""+args["time"]+App.key);
+		args["sign"] = Encrypt.Md5(App.Instance.uid+""+App.Instance.game.game_id+""+App.Instance.token+_coin_type+amount+""+args["time"]+App.key);
 		Server.Instance.Get<ServerVO.TransferCoinToWalletVO>(args,(receive)=>{
 			if(receive.succ == 1){
 				App.Instance.role_balance = receive.role_balance;
