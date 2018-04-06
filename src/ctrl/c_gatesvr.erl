@@ -68,7 +68,7 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
     usr_user:set_one(ToUpdateUser),
     LogR = #log_player_login{
                 game_id = GameId,
-                player_id = Uid,
+                player_id = UserId,
                 device_id = DeviceId,
                 device_model = util:esc(util:device_model(DeviceModel)),
                 os_type = OsType,
