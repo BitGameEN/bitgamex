@@ -5,7 +5,8 @@
 -module(c_gamesvr).
 -export([get_game_data/4,
          save_game_data/3,
-         transfer_coin_in_game/6]).
+         transfer_coin_in_game/6,
+         get_coin_list_to_draw/2]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -173,4 +174,8 @@ transfer_coin_in_game(GameId, UserId, DstUserId, GoldType, Amount, ReceiptData) 
         ?ERR("transfer_coin_in_game exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
+
+get_coin_list_to_draw(GameId, UserId) ->
+    #run_role_gold_to_draw{gold_list = GoldList0} = run_role_gold_to_draw:get_one({GameId, UserId}),
+    {ok, {[{TimeKey, {[{coin_type, GoldType}, {amount, Amount}]}} || {TimeKey, GoldType, Amount} <- GoldList0]}}.
 

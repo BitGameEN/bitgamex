@@ -436,6 +436,36 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_transfer_coin_to_wallet([User, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
+% https://api.bitgamex.com/?a=get_coin_list_to_draw&uid=xx&game_id=xx&token=xx
+action(<<"GET">>, <<"get_coin_list_to_draw">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0} = ParamsMap,
+    ?DBG("get_coin_list_to_draw: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0],
+    [UidBin, GameIdBin, Token] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_get_coin_list_to_draw([User]);
+
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
 
