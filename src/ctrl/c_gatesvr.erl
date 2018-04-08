@@ -12,7 +12,8 @@
          api_bind_wallet/1,
          api_transfer_coin_to_exchange/1,
          api_transfer_coin_to_wallet/1,
-         api_get_coin_list_to_draw/1]).
+         api_get_coin_list_to_draw/1,
+         api_draw_coin/1]).
 
 -include("common.hrl").
 -include("record_usr_user.hrl").
@@ -182,4 +183,9 @@ api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = 
 api_get_coin_list_to_draw([#usr_user{current_game_id = GameId, id = UserId} = User]) ->
     {ok, CoinList} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_coin_list_to_draw, [GameId, UserId]),
     {ok, #{coin_list => CoinList}}.
+
+%% 领取游戏币的接口
+api_draw_coin([#usr_user{current_game_id = GameId, id = UserId} = User, CoinId]) ->
+    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, draw_coin, [GameId, UserId, CoinId]),
+    {ok, #{role_balance => RoleGold}}.
 

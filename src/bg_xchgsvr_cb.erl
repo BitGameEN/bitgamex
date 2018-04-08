@@ -83,7 +83,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
             false -> throw({?ERRNO_VERIFY_FAILED, <<"sign unmatched">>})
         end,
     
-        % transaction_id=xx&exchange_accid=xx&game_uid=xx&token_symbol=xx&amount=xx&time=xx
+        % transaction_id=xx&exchange_accid=xx&game_uid=xx&game_id=xx&token_symbol=xx&amount=xx&time=xx
         ReceiptData = util:url_decode(Param),
         ParamList = string:tokens(binary_to_list(ReceiptData), [$&]),
         ParamPairs = [begin
@@ -95,11 +95,13 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         TransactionId = proplists:get_value("transaction_id", ParamPairs), ?ASSERT(TransactionId =/= undefined),
         ExchangeAccid = proplists:get_value("exchange_accid", ParamPairs), ?ASSERT(ExchangeAccid =/= undefined),
         GameUidStr = proplists:get_value("game_uid", ParamPairs), ?ASSERT(GameUidStr =/= undefined),
+        GameIdStr = proplists:get_value("game_id", ParamPairs), ?ASSERT(GameIdStr =/= undefined),
         GoldType = proplists:get_value("token_symbol", ParamPairs), ?ASSERT(GoldType =/= undefined),
         AmountStr = proplists:get_value("amount", ParamPairs), ?ASSERT(AmountStr =/= undefined),
         TimeStr = proplists:get_value("time", ParamPairs), ?ASSERT(TimeStr =/= undefined),
     
         PlayerId = list_to_integer(GameUidStr), ?ASSERT(PlayerId > 0),
+        GameId = list_to_integer(GameIdStr), ?ASSERT(GameId > 0),
         Amount = list_to_float(AmountStr), ?ASSERT(Amount > 0),
         Time = list_to_integer(TimeStr), ?ASSERT(Time > 0),
 
@@ -124,7 +126,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
                                 gold = Amount,
                                 status = 0,
                                 error_tag = <<>>,
-                                receive_game_id = Usr#usr_user.current_game_id,
+                                receive_game_id = GameId,
                                 receive_time = NowDateTime,
                                 update_time = NowDateTime},
                 usr_gold_transfer:set_one(TransferR),
@@ -160,7 +162,12 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
         run_data:trans_begin(),
         % 加金币
         lib_user_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, TransferAmount),
-        lib_user_gold:add_gold(PlayerId, GoldType, TransferAmount),
+        case GameId > 0 of
+            true ->
+                lib_rpc:rpc(?SVRTYPE_GAME, lib_role_gold, add_gold, [PlayerId, GameId, GoldType, TransferAmount]);
+            false ->
+                lib_user_gold:add_gold(PlayerId, GoldType, TransferAmount)
+        end,
         % 更新transfer记录
         lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, TransferAmount}),
         run_data:trans_commit(),

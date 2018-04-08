@@ -65,5 +65,9 @@ get_and_lock(Key) ->
     end.
 
 unlock(Key, Cas) ->
-    cberl:unlock(?CACHE, Key, Cas).
+    % 如果是在run_data的事务中，只有在事务提交后才能保证数据写回完毕，这时候才能解锁，否则提前解锁会导致并发进程读出的数据是老数据
+    case run_data:in_trans() of
+        true -> run_data:trans_set_post_commit_function(fun() -> cberl:unlock(?CACHE, Key, Cas) end);
+        false -> cberl:unlock(?CACHE, Key, Cas)
+    end.
 

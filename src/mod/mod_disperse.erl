@@ -112,13 +112,17 @@ handle_info({rpc_server_add, Id, Node, Ip, Port, Type}, State) ->
         ?SVRTYPE_GATE ->
             skip;
         ?SVRTYPE_GAME ->
-            case State#state.type =:= ?SVRTYPE_GATE of
-                true ->
+            case State#state.type of
+                ?SVRTYPE_GATE ->
                     ?INFO("gamesvr added: id=~p, node=~p, ip=~p, port=~p, type=~p", [Id, Node, Ip, Port, Type]),
                     erlang:monitor_node(Node, true),
                     ets:insert(?ETS_GAMESVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type}),
                     lib_game:set_gamesvr_num(length(gamesvr_list()));
-                false ->
+                ?SVRTYPE_XCHG ->
+                    ?INFO("gamesvr added: id=~p, node=~p, ip=~p, port=~p, type=~p", [Id, Node, Ip, Port, Type]),
+                    erlang:monitor_node(Node, true),
+                    ets:insert(?ETS_GAMESVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type});
+                _ ->
                     skip
             end;
         ?SVRTYPE_XCHG ->
@@ -190,9 +194,9 @@ get_and_call_server(#state{type = SelfType} = State) ->
             ?SVRTYPE_GATE ->
                 io_lib:format(<<"select id, ip, port, node, type from server where type = ~p or type = ~p">>, [?SVRTYPE_GAME, ?SVRTYPE_XCHG]);
             ?SVRTYPE_GAME ->
-                io_lib:format(<<"select id, ip, port, node, type from server where type = ~p">>, [?SVRTYPE_GATE]);
+                io_lib:format(<<"select id, ip, port, node, type from server where type = ~p or type = ~p">>, [?SVRTYPE_GATE, ?SVRTYPE_XCHG]);
             ?SVRTYPE_XCHG ->
-                io_lib:format(<<"select id, ip, port, node, type from server where type = ~p">>, [?SVRTYPE_GATE])
+                io_lib:format(<<"select id, ip, port, node, type from server where type = ~p or type = ~p">>, [?SVRTYPE_GATE, ?SVRTYPE_GAME])
         end,
     Servers = case Sql =:= <<>> of
                   true -> [];

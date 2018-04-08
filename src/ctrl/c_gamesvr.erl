@@ -6,7 +6,8 @@
 -export([get_game_data/4,
          save_game_data/3,
          transfer_coin_in_game/6,
-         get_coin_list_to_draw/2]).
+         get_coin_list_to_draw/2,
+         draw_coin/3]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -178,4 +179,31 @@ transfer_coin_in_game(GameId, UserId, DstUserId, GoldType, Amount, ReceiptData) 
 get_coin_list_to_draw(GameId, UserId) ->
     #run_role_gold_to_draw{gold_list = GoldList0} = run_role_gold_to_draw:get_one({GameId, UserId}),
     {ok, {[{TimeKey, {[{coin_type, GoldType}, {amount, Amount}]}} || {TimeKey, GoldType, Amount} <- GoldList0]}}.
+
+draw_coin(GameId, UserId, CoinId) ->
+  try
+    run_data:trans_begin(),
+
+    #run_role_gold_to_draw{gold_list = GoldListToDraw} = run_role_gold_to_draw:get_one({GameId, UserId}),
+    case lists:keyfind(CoinId, 1, GoldListToDraw) of
+        false ->
+            throw({-1, <<"the specified coin id was not found">>});
+        {_, GoldType, Amount} ->
+            lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
+            NewGoldListToDraw = lists:keydelete(CoinId, 1, GoldListToDraw),
+            lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, GoldType, NewGoldListToDraw),
+            RoleGold = run_role_gold:get_one({GameId, UserId}),
+            run_data:trans_commit(),
+            {ok, RoleGold#run_role_gold.gold}
+    end
+
+  catch
+    throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+        run_data:trans_rollback(),
+        throw({ErrNo, ErrMsg});
+    _:ExceptionErr ->
+        run_data:trans_rollback(),
+        ?ERR("draw_coin exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+        throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
+    end.
 

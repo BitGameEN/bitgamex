@@ -466,6 +466,44 @@ action(<<"GET">>, <<"get_coin_list_to_draw">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_get_coin_list_to_draw([User]);
 
+% https://api.bitgamex.com/?a=draw_coin&uid=xx&game_id=xx&token=xx&coin_id=xx&time=xx&sign=xx
+action(<<"GET">>, <<"draw_coin">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_id, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_id := CoinIdBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("draw_coin: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, CoinIdBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, CoinIdBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, CoinIdBin, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    CoinId = binary_to_integer(CoinIdBin),
+    %Time = binary_to_integer(TimeBin),
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, CoinIdBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_draw_coin([User, CoinId]);
+
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
 
