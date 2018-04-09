@@ -178,7 +178,7 @@ transfer_coin_in_game(GameId, UserId, DstUserId, GoldType, Amount, ReceiptData) 
 
 get_coin_list_to_draw(GameId, UserId) ->
     #run_role_gold_to_draw{gold_list = GoldList0} = run_role_gold_to_draw:get_one({GameId, UserId}),
-    {ok, {[{TimeKey, {[{coin_type, GoldType}, {amount, Amount}]}} || {TimeKey, GoldType, Amount} <- GoldList0]}}.
+    {ok, {[{integer_to_binary(TimeKey), {[{coin_type, GoldType}, {amount, Amount}]}} || {TimeKey, GoldType, Amount} <- GoldList0]}}.
 
 draw_coin(GameId, UserId, CoinId) ->
   try
