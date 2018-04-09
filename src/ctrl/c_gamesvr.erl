@@ -190,8 +190,8 @@ draw_coin(GameId, UserId, CoinId) ->
             throw({-1, <<"the specified coin id was not found">>});
         {_, GoldType, Amount} ->
             lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
-            NewGoldListToDraw = lists:keydelete(CoinId, 1, GoldListToDraw),
-            lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, GoldType, NewGoldListToDraw),
+            lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
+            lib_role_gold_to_draw:delete_gold_to_draw(UserId, GameId, CoinId),
             RoleGold = run_role_gold:get_one({GameId, UserId}),
             run_data:trans_commit(),
             {ok, RoleGold#run_role_gold.gold}
