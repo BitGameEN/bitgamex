@@ -9,12 +9,14 @@ public class SettingsManger : MonoBehaviour {
 	public Text labelBalance;
 	public Text labelWallet;
 	public Text labelExchange;
-	public InputField labelTransferBalance;
-	public InputField labelTransferId;
+	public InputField inputTransferBalance;
+	public InputField inputTransferId;
 	public InputField inputWallet;
 	public InputField inputExchange;
 	public InputField inputWalletAddr;
 	public InputField inputExchangeId;
+	public InputField inputCoinId;
+	public Text coinList;
 	public Text tips;
 	public uiManager manager;
 
@@ -39,8 +41,8 @@ public class SettingsManger : MonoBehaviour {
 		var toId = 0;
 		var amount = 0f;
 		try{
-			toId = Convert.ToInt32(labelTransferId.text);
-			amount = Convert.ToSingle(labelTransferBalance.text);
+			toId = Convert.ToInt32(inputTransferId.text);
+			amount = Convert.ToSingle(inputTransferBalance.text);
 		}catch(Exception){
 
 		}
@@ -112,10 +114,43 @@ public class SettingsManger : MonoBehaviour {
 		var wallet = inputWalletAddr.text;
 		API.Instance.BindWallet(wallet,()=>{
 			Debug.LogWarning("success");
-			tips.text = "绑定钱包成功！";
+			tips.text = "绑定钱包成功!";
 		},(e)=>{
 			Debug.LogWarning("fail");
 			tips.text = "绑定钱包失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
+		});
+	}
+
+	public void GetCoinListToDraw(){
+		API.Instance.GetCoinListToDraw(()=>{
+			Debug.LogWarning("success");
+			coinList.text = App.Instance.coin_list_to_draw;
+			tips.text = "获取待领游戏币列表成功!";
+		},(e)=>{
+			Debug.LogWarning("fail");
+			tips.text = "获取待领游戏币列表失败!";
+			if(e != null){
+				tips.text += e.errno;
+			}
+		});
+	}
+
+	public void DrawCoin(){
+		var coin_id = 0;
+		try{
+			coin_id = Convert.ToInt32(inputCoinId.text);
+		}catch(Exception){
+
+		}
+		API.Instance.DrawCoin(coin_id,()=>{
+			Debug.LogWarning("success");
+			tips.text = "领取游戏币成功!";
+		},(e)=>{
+			Debug.LogWarning("fail");
+			tips.text = "领取游戏币失败!";
 			if(e != null){
 				tips.text += e.errno;
 			}

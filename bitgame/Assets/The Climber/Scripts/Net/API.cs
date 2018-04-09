@@ -201,4 +201,44 @@ public class API{
 			fail(null);
 		});
 	}
+
+	public void GetCoinListToDraw(Action success,Action<ServerVO.GetCoinListToDrawVO> fail){
+		var args = new Dictionary<string,object>();
+		args["a"] = "get_coin_list_to_draw";
+		args["uid"] = App.Instance.uid;
+		args["game_id"] = App.Instance.game.game_id;
+		args["token"] = App.Instance.token;
+		Server.Instance.Get<ServerVO.GetCoinListToDrawVO>(args,(receive)=>{
+			if(receive.succ == 1){
+				App.Instance.coin_list_to_draw = receive.coin_list;
+				success();
+			}else{
+				fail(receive);
+			}
+		},()=>{
+			fail(null);
+		});
+	}
+
+	public void DrawCoin(int CoinId, Action success,Action<ServerVO.DrawCoinVO> fail){
+		var args = new Dictionary<string,object>();
+		args["a"] = "draw_coin";
+		args["uid"] = App.Instance.uid;
+		args["game_id"] = App.Instance.game.game_id;
+		args["token"] = App.Instance.token;
+		args["coin_id"] = CoinId;
+		args["time"] = App.Instance.time;
+		args["sign"] = Encrypt.Md5(App.Instance.uid+""+
+			App.Instance.game.game_id+""+App.Instance.token+CoinId+args["time"]+App.key);
+		Server.Instance.Get<ServerVO.DrawCoinVO>(args,(receive)=>{
+			if(receive.succ == 1){
+				App.Instance.role_balance = receive.role_balance;
+				success();
+			}else{
+				fail(receive);
+			}
+		},()=>{
+			fail(null);
+		});
+	}
 }

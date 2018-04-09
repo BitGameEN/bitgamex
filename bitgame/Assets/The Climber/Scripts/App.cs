@@ -9,6 +9,7 @@ public sealed class App
 	public string exchange_accid;
 	public string wallet_addr;
 	public string token;
+	public string coin_list_to_draw;
 	public string role_balance;
 	public string user_balance;
 	public float exchange_balance;

@@ -54,6 +54,16 @@ public class ServerVO{
 		public float exchange_balance;
 	}
 
+	public class GetCoinListToDrawVO: ErrorArg{
+		public int succ;
+		public string coin_list;
+	}
+
+	public class DrawCoinVO: ErrorArg{
+		public int succ;
+		public string role_balance;
+	}
+
 	public class ErrorArg{
 		public string req;
 		public int errno;
