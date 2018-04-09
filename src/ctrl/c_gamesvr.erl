@@ -189,6 +189,7 @@ draw_coin(GameId, UserId, CoinId) ->
         false ->
             throw({-1, <<"the specified coin id was not found">>});
         {_, GoldType, Amount} ->
+            lib_role_gold:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
             lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold_to_draw:delete_gold_to_draw(UserId, GameId, CoinId),
