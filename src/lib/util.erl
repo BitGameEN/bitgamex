@@ -16,6 +16,7 @@
         get_diff_days/2,
         md5/1,
         rand/2,
+        round5d/1,
         clamp/3,
         ceil/1,
         floor/1,
@@ -125,6 +126,10 @@ rand(Min, Max) ->
     end,
     M = Min - 1,
     rand:uniform(Max - M) + M.
+
+%%四舍五入保留5位小数
+round5d(N) ->
+    round(N*100000)/100000.
 
 % 将val钳制在min和max之间
 clamp(Min, Max, Val) ->

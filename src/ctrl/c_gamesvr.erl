@@ -106,7 +106,7 @@ save_game_data(GameId, UserId, GameData) ->
 
     case DeltaGold > 0 of
         true ->
-            mod_distributor:req_add_balance(#add_gold_req{uid = UserId, game_id = GameId, gold_type = GoldType, delta_gold = DeltaGold, time = Now});
+            mod_distributor:req_add_balance(#add_gold_req{uid = UserId, game_id = GameId, gold_type = GoldType, delta_gold = util:round5d(DeltaGold), time = Now});
         false ->
             lib_role_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaGold),
             lib_role_gold:add_gold(UserId, GameId, GoldType, DeltaGold),

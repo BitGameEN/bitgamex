@@ -59,7 +59,8 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
     % 因为power总值在持续增长，使用当前的power总值，一定不会超发
     PowerSum = lists:sum([P || {_, P} <- get_power_list()]),
     Role = run_role:get_one({GameId, PlayerId}),
-    AddGold = get_output_quota(login, TheGT, DurationSeconds) * Role#run_role.power / PowerSum,
+    AddGold0 = get_output_quota(login, TheGT, DurationSeconds) * Role#run_role.power / PowerSum,
+    AddGold = util:round5d(AddGold0),
     lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
     lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{util:unixtime(), AddGold}]),
     ok.
