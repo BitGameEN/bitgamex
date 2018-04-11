@@ -72,7 +72,7 @@ get_power_list() ->
         _ ->
             GameIds = usr_game:get_game_gids_by_open_status(1),
             Sql = <<"select sum(power) from role_~p">>,
-            PowerList = [{GameId, db_esql:get_one(?DB_RUN, io_lib:format(Sql, GameId))} || GameId <- GameIds],
+            PowerList = [{GameId, db_esql:get_one(?DB_RUN, io_lib:format(Sql, [GameId]))} || GameId <- GameIds],
             cache:set(?CACHE_KEY_POWERSUM_LIST, PowerList, 300), % 缓存5分钟，时间不能太长，否则容易超发
             PowerList
     end.
