@@ -61,8 +61,12 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
     Role = run_role:get_one({GameId, PlayerId}),
     AddGold0 = get_output_quota(login, TheGT, DurationSeconds) * Role#run_role.power / PowerSum,
     AddGold = util:round5d(AddGold0),
-    lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
-    lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{util:unixtime(), AddGold}]),
+    case AddGold > 0 of
+        true ->
+            lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
+            lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{util:unixtime(), AddGold}]);
+        false -> void
+    end,
     ok.
 
 -define(CACHE_KEY_POWERSUM_LIST, <<"cache_key_powersum_list">>).
