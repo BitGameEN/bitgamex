@@ -3,12 +3,14 @@
 %%% @Description: 挖矿相关处理
 %%%--------------------------------------
 -module(lib_mining).
--export([distribute_game_delta_golds/2, distribute_login_delta_golds/1]).
+-export([distribute_game_delta_golds/2, distribute_login_delta_golds/3]).
+-export([clear_cache_power_list/0]).
 
 -include("common.hrl").
 -include("gameConfigGlobalKey.hrl").
 -include("record.hrl").
 -include("record_cfg_gold_type.hrl").
+-include("record_run_role.hrl").
 -include("record_run_role_gold_to_draw.hrl").
 
 % 挖矿逻辑
@@ -50,5 +52,36 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
     [DistributeFunSameGT(GT) || GT <- GTs],
     ok.
 
-distribute_login_delta_golds(PlayerId) ->
+-define(TWO_DAY_SECONDS, 2 * 24 * 3600).
+distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
+    DurationSeconds = util:clamp(1, ?TWO_DAY_SECONDS, DurationSeconds0),
+    TheGT = ?DEFAULT_GOLD_TYPE,
+    % 因为power总值在持续增长，使用当前的power总值，一定不会超发
+    PowerSum = lists:sum([P || {_, P} <- get_power_list()]),
+    Role = run_role:get_one({GameId, PlayerId}),
+    AddGold = get_output_quota(login, TheGT, DurationSeconds) * Role#run_role.power / PowerSum,
+    lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
+    lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{util:unixtime(), AddGold}]),
     ok.
+
+-define(CACHE_KEY_POWERSUM_LIST, <<"cache_key_powersum_list">>).
+% 获取各游戏的power分布
+get_power_list() ->
+    case cache:get(?CACHE_KEY_POWERSUM_LIST) of
+        {true, _Cas, Val} -> Val;
+        _ ->
+            GameIds = usr_game:get_game_gids_by_open_status(1),
+            Sql = <<"select sum(power) from role_~p">>,
+            PowerList = [{GameId, db_esql:get_one(?DB_RUN, io_lib:format(Sql, GameId))} || GameId <- GameIds],
+            cache:set(?CACHE_KEY_POWERSUM_LIST, PowerList, 300), % 缓存5分钟，时间不能太长，否则容易超发
+            PowerList
+    end.
+
+% 当增加新游戏，或者下架旧游戏时，需要立即清除power_list
+clear_cache_power_list() ->
+    case cache:get(?CACHE_KEY_POWERSUM_LIST) of
+        {true, _Cas, CacheKey} -> cache:del(CacheKey);
+        _ -> void
+    end,
+    ok.
+

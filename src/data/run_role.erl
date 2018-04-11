@@ -39,7 +39,7 @@ get_one({Game_id, Player_id} = Id, direct_from_db) ->
 			insert_ets(Val),
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
+			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 				[] -> [];
 				Row ->
 					insert_ets_from_db(Row),
@@ -54,7 +54,7 @@ get_one({Game_id, Player_id} = Id, anyway) ->
 					Val = run_data_ver:upgrade_if_need(Val0),
 					Val;
 				_ ->
-					case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
+					case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 						[] -> [];
 						Row -> % do not insert ets
 							R = build_record_from_row(Row),
@@ -106,12 +106,13 @@ set_one(R0) when is_record(R0, run_role) ->
 				last_login_ip = Last_login_ip,
 				game_data = Game_data,
 				old_game_data = Old_game_data,
+				power = Power,
 				time = Time
 			} = R0,
 			R = R0#run_role{key_id = {Game_id, Player_id}, ver = run_data_ver:newest_ver(run_role)},
 			F = fun() ->
-					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(~p,~p,~p,~p,~p,'~s','~s','~s',~p)">>,
-						[Game_id, Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time])) end),
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time) values(~p,~p,~p,~p,~p,'~s','~s','~s',~p,~p)">>,
+						[Game_id, Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time])) end),
 					cache:set(cache_key(R#run_role.key_id), R),
 					insert_ets(R)
 				end,
@@ -165,7 +166,7 @@ reload_one({Game_id, Player_id} = Id) ->
 	case util:lookup_one(run_role, Id, false) of
 		[] -> true;
 		R ->
-			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
+			case db_esql:get_row(?DB_RUN, io_lib:format(<<"select player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time from role_~p where game_id=? and player_id=?">>, [Game_id]), [Game_id, Player_id]) of
 				[] -> false;
 				Row ->
 					insert_ets_from_db(Row),
@@ -196,11 +197,12 @@ syncdb(R) when is_record(R, run_role) ->
 		last_login_ip = Last_login_ip,
 		game_data = Game_data,
 		old_game_data = Old_game_data,
+		power = Power,
 		time = Time
 	} = R,
-	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,time) values(?,?,?,?,?,?,?,?,?) on duplicate key update "
-		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, time = ?">>, [Game_id]),
-		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time,Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) end);
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time) values(?,?,?,?,?,?,?,?,?,?) on duplicate key update "
+		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, power = ?, time = ?">>, [Game_id]),
+		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time,Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time]) end);
 syncdb(Gid) ->
 	case get_one_locally(Gid) of
 		[] -> void;
@@ -216,7 +218,7 @@ insert_ets(R) ->
 	ets:insert(run_role, R),
 	ok.
 
-build_record_from_row([Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Time]) ->
+build_record_from_row([Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time]) ->
 	R0 = #run_role{
 		key_id = {Game_id, Player_id},
 		player_id = Player_id,
@@ -227,6 +229,7 @@ build_record_from_row([Player_id, Ver, Game_id, Create_time, Last_login_time, La
 		last_login_ip = Last_login_ip,
 		game_data = Game_data,
 		old_game_data = Old_game_data,
+		power = Power,
 		time = Time
 	},
 	run_data_ver:upgrade_if_need(R0).

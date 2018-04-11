@@ -30,6 +30,7 @@ CREATE TABLE `role` (
   `last_login_ip` varchar(20) NOT NULL DEFAULT '' COMMENT '最后登陆IP',
   `game_data` varchar(2048) NOT NULL DEFAULT '' COMMENT '游戏数据',
   `old_game_data` varchar(2048) NOT NULL DEFAULT '' COMMENT '老的游戏数据（出错回档用）',
+  `power` int(11) NOT NULL DEFAULT '1' COMMENT '原力值',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`,`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家角色信息';

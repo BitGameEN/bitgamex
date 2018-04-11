@@ -13,5 +13,6 @@
 		last_login_ip = <<"">>, % 最后登陆IP
 		game_data = <<"">>, % 游戏数据
 		old_game_data = <<"">>, % 老的游戏数据（出错回档用）
+		power = 1, % 原力值
 		time = 0 % 更新时间戳
 }).

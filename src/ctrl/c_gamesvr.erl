@@ -51,7 +51,9 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                         run_role:set_one(
                           Role#run_role{last_login_time = Now,
                                         last_login_ip = ?T2B(PeerIp),
-                                        time = Now});
+                                        time = Now}),
+                        % 登录给金币
+                        lib_mining:distribute_login_delta_golds(UserId, GameId, Now - Role#run_role.last_login_time);
                     false -> void
                 end,
                 Role#run_role.game_data
