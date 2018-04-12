@@ -52,34 +52,37 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, Recei
                     update_time = NowDateTime},
     usr_gold_transfer:set_one(TransferR),
     TransferDiscountToXchg = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG),
-    Amount = Amount0 * (1 - TransferDiscountToXchg),
-    % 参数串：
-    % 发送到交易所：transaction_id=xx&game_uid=xx&exchange_accid=xx&token_symbol=xx&amount=xx&time=xx
-    % 发送到钱包：transaction_id=xx&game_uid=xx&exchange_accid=xx&wallet_address=xx&token_symbol=xx&amount=xx&time=xx
-    UserIdBin = integer_to_binary(UserId),
-    AmountBin = util:f2s(Amount),
-    TimeBin = integer_to_binary(util:unixtime()),
-    Params0 =
-        case TransferType of
-            ?GOLD_TRANSFER_TYPE_GAME_TO_XCHG ->
-                <<"transaction_id=", TransactionId/binary, "&game_uid=", UserIdBin/binary, "&exchange_accid=", BindXchgAccId/binary,
-                  "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>;
-            ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET ->
-                <<"transaction_id=", TransactionId/binary, "&game_uid=", UserIdBin/binary, "&exchange_accid=", BindXchgAccId/binary,
-                  "&wallet_address=", WalletAddr/binary, "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>
-        end,
-    % 用自己的私钥签名
-    [Entry1] = public_key:pem_decode(?SELF_PRIVATE_KEY),
-    RSAPriKey = public_key:pem_entry_decode(Entry1),
-    Sign0 = public_key:sign(Params0, 'sha', RSAPriKey),
-    % 用交易所的公钥加密
-    [Entry2] = public_key:pem_decode(?EXCHANGE_PUBLIC_KEY),
-    RSAPubKey = public_key:pem_entry_decode(Entry2),
-    Params1 = public_key:encrypt_public(Params0, RSAPubKey),
-    % 然后，base64、url编码
-    Sign = util:url_encode(base64:encode(Sign0)),
-    ParamData = util:url_encode(base64:encode(Params1)),
-    Params = [{<<"param_data">>, ParamData}, {<<"sign">>, Sign}],
+    %% todo：临时为了客户端调试注释掉，以后改回来
+    %Amount = Amount0 * (1 - TransferDiscountToXchg),
+    %% 参数串：
+    %% 发送到交易所：transaction_id=xx&game_uid=xx&exchange_accid=xx&token_symbol=xx&amount=xx&time=xx
+    %% 发送到钱包：transaction_id=xx&game_uid=xx&exchange_accid=xx&wallet_address=xx&token_symbol=xx&amount=xx&time=xx
+    %UserIdBin = integer_to_binary(UserId),
+    %AmountBin = util:f2s(Amount),
+    %TimeBin = integer_to_binary(util:unixtime()),
+    %Params0 =
+    %    case TransferType of
+    %        ?GOLD_TRANSFER_TYPE_GAME_TO_XCHG ->
+    %            <<"transaction_id=", TransactionId/binary, "&game_uid=", UserIdBin/binary, "&exchange_accid=", BindXchgAccId/binary,
+    %              "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>;
+    %        ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET ->
+    %            <<"transaction_id=", TransactionId/binary, "&game_uid=", UserIdBin/binary, "&exchange_accid=", BindXchgAccId/binary,
+    %              "&wallet_address=", WalletAddr/binary, "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>
+    %    end,
+    %% 用自己的私钥签名
+    %[Entry1] = public_key:pem_decode(?SELF_PRIVATE_KEY),
+    %RSAPriKey = public_key:pem_entry_decode(Entry1),
+    %Sign0 = public_key:sign(Params0, 'sha', RSAPriKey),
+    %% 用交易所的公钥加密
+    %[Entry2] = public_key:pem_decode(?EXCHANGE_PUBLIC_KEY),
+    %RSAPubKey = public_key:pem_entry_decode(Entry2),
+    %Params1 = public_key:encrypt_public(Params0, RSAPubKey),
+    %% 然后，base64、url编码
+    %Sign = util:url_encode(base64:encode(Sign0)),
+    %ParamData = util:url_encode(base64:encode(Params1)),
+    %Params = [{<<"param_data">>, ParamData}, {<<"sign">>, Sign}],
+    Params = [],
+
     % 发送，并处理结果
     Callback =
         fun(JsonObject) ->
@@ -127,19 +130,21 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, Recei
     end.
 
 do_transfer_gold_to_exchange(Url, Params) ->
-    case ibrowse:send_req(Url, [?JSON_CONTENT], get, jsx:encode(Params), ?HTTP_CLIENT_OPTIONS, ?HTTP_CLIENT_TIMEOUT) of
-        {ok, Status, Head, Body} ->
-            case Status of
-                "200" ->
-                    JsonObject = jsx:decode(list_to_binary(Body)),
-                    %?INFO("JsonObject: ~p~n", [JsonObject]),
-                    JsonObject;
-                _ ->
-                    {error, ?ERRNO_HTTP_REQ_FAILED, Body}
-            end;
-        {error, req_timedout} ->
-            {error, ?ERRNO_HTTP_REQ_TIMEOUT, <<"request timeout">>};
-        {error, Reason} ->
-            {error, ?ERRNO_HTTP_REQ_FAILED, Reason}
-    end.
+    %% todo：临时为了客户端调试注释掉，以后改回来
+    %case ibrowse:send_req(Url, [?JSON_CONTENT], get, jsx:encode(Params), ?HTTP_CLIENT_OPTIONS, ?HTTP_CLIENT_TIMEOUT) of
+    %    {ok, Status, Head, Body} ->
+    %        case Status of
+    %            "200" ->
+    %                JsonObject = jsx:decode(list_to_binary(Body)),
+    %                %?INFO("JsonObject: ~p~n", [JsonObject]),
+    %                JsonObject;
+    %            _ ->
+    %                {error, ?ERRNO_HTTP_REQ_FAILED, Body}
+    %        end;
+    %    {error, req_timedout} ->
+    %        {error, ?ERRNO_HTTP_REQ_TIMEOUT, <<"request timeout">>};
+    %    {error, Reason} ->
+    %        {error, ?ERRNO_HTTP_REQ_FAILED, Reason}
+    %end.
+    [{<<"succ">>, 1}, {<<"balance">>, 0}].
 
