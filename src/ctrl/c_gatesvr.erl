@@ -13,7 +13,8 @@
          api_transfer_coin_to_exchange/1,
          api_transfer_coin_to_wallet/1,
          api_get_coin_list_to_draw/1,
-         api_draw_coin/1]).
+         api_draw_coin/1,
+         api_consume_coin/1]).
 
 -include("common.hrl").
 -include("record_usr_user.hrl").
@@ -187,5 +188,10 @@ api_get_coin_list_to_draw([#usr_user{current_game_id = GameId, id = UserId} = Us
 %% 领取游戏币的接口
 api_draw_coin([#usr_user{current_game_id = GameId, id = UserId} = User, CoinId]) ->
     {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, draw_coin, [GameId, UserId, CoinId]),
+    {ok, #{role_balance => RoleGold}}.
+
+%% 消耗游戏币的接口
+api_consume_coin([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount]) ->
+    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, consume_coin, [GameId, UserId, GoldType, Amount]),
     {ok, #{role_balance => RoleGold}}.
 

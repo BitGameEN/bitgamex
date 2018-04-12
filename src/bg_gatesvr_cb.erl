@@ -519,6 +519,52 @@ action(<<"GET">>, <<"draw_coin">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_draw_coin([User, CoinId]);
 
+% https://api.bitgamex.com/?a=consume_coin&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&time=xx&sign=xx
+action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("draw_coin: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    Amount = util:binary_to_float(AmountBin),
+    %Time = binary_to_integer(TimeBin),
+    case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
+        true -> void
+    end,
+    case Amount < 0.00000001 of
+        true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
+        false -> void
+    end,
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_consume_coin([User, GoldType, Amount]);
+
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).
 

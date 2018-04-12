@@ -7,7 +7,8 @@
          save_game_data/3,
          transfer_coin_in_game/6,
          get_coin_list_to_draw/2,
-         draw_coin/3]).
+         draw_coin/3,
+         consume_coin/4]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -207,6 +208,26 @@ draw_coin(GameId, UserId, CoinId) ->
     _:ExceptionErr ->
         run_data:trans_rollback(),
         ?ERR("draw_coin exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+        throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
+    end.
+
+consume_coin(GameId, UserId, GoldType, Amount) ->
+  try
+    run_data:trans_begin(),
+
+    lib_role_gold:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
+    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount),
+    RoleGold = run_role_gold:get_one({GameId, UserId}),
+    run_data:trans_commit(),
+    {ok, RoleGold#run_role_gold.gold}
+
+  catch
+    throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+        run_data:trans_rollback(),
+        throw({ErrNo, ErrMsg});
+    _:ExceptionErr ->
+        run_data:trans_rollback(),
+        ?ERR("consume_coin exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
