@@ -3,7 +3,7 @@
 %%% @Description: xchgsvr的逻辑处理模块
 %%%--------------------------------------
 -module(c_xchgsvr).
--export([transfer_gold_to_exchange/5, transfer_gold_to_wallet/5]).
+-export([transfer_gold_to_exchange/5, transfer_gold_to_wallet/6]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -22,13 +22,13 @@
 
 
 transfer_gold_to_exchange(GameId, UserId, GoldType, Amount, ReceiptData) ->
-    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, UserId, GoldType, Amount, ReceiptData).
+    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, UserId, GoldType, Amount, <<>>, ReceiptData).
 
-transfer_gold_to_wallet(GameId, UserId, GoldType, Amount, ReceiptData) ->
-    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_WALLET, GameId, UserId, GoldType, Amount, ReceiptData).
+transfer_gold_to_wallet(GameId, UserId, GoldType, Amount, WalletAddr, ReceiptData) ->
+    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_WALLET, GameId, UserId, GoldType, Amount, WalletAddr, ReceiptData).
 
-transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, ReceiptData) ->
-    #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr, device_id = DeviceId} = usr_user:get_one(UserId),
+transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, ReceiptData) ->
+    #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
     lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
     lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0),
@@ -42,7 +42,7 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, ReceiptData) ->
                     player_id = UserId,
                     device_id = DeviceId,
                     xchg_accid = BindXchgAccId,
-                    wallet_addr = case TransferType of ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET -> BindWalletAddr; _ -> <<>> end,
+                    wallet_addr = WalletAddr,
                     gold_type = GoldType,
                     gold = Amount0,
                     status = 0,
@@ -66,7 +66,7 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, ReceiptData) ->
                   "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>;
             ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET ->
                 <<"transaction_id=", TransactionId/binary, "&game_uid=", UserIdBin/binary, "&exchange_accid=", BindXchgAccId/binary,
-                  "&wallet_address=", BindWalletAddr/binary, "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>
+                  "&wallet_address=", WalletAddr/binary, "&token_symbol=", GoldType/binary, "&amount=", AmountBin/binary, "&time=", TimeBin/binary>>
         end,
     % 用自己的私钥签名
     [Entry1] = public_key:pem_decode(?SELF_PRIVATE_KEY),

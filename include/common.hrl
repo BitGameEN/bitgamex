@@ -101,4 +101,6 @@
 -define(ERRNO_HTTP_REQ_FAILED, -989). % 请求失败
 -define(ERRNO_HTTP_REQ_TIMEOUT, -988). % 请求超时
 -define(ERRNO_UNIDENTIFIED, -987). % 未确定的错误
+-define(ERRNO_INVALID_WALLET_ADDR, -986). % 无效的钱包地址
+-define(ERRNO_INVALID_EXCHANGE_ID, -985). % 无效的交易所账号
 

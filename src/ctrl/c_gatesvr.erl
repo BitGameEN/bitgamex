@@ -175,8 +175,8 @@ api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} 
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 
 %% 转账游戏币给绑定的钱包的接口
-api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, ReceiptData]) ->
-    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [GameId, UserId, GoldType, Amount, ReceiptData]),
+api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, WalletAddr, ReceiptData]) ->
+    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [GameId, UserId, GoldType, Amount, WalletAddr, ReceiptData]),
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 
 %% 获取待领游戏币列表的接口
