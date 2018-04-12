@@ -187,6 +187,7 @@ public class API{
 		args["token"] = App.Instance.token;
 		args["coin_type"] = _coin_type;
 		args["amount"] = amount;
+		args["wallet_addr"] = "";
 		args["time"] = App.Instance.time;
 		args["sign"] = Encrypt.Md5(App.Instance.uid+""+App.Instance.game.game_id+""+App.Instance.token+_coin_type+amount+""+args["time"]+App.key);
 		Server.Instance.Get<ServerVO.TransferCoinToWalletVO>(args,(receive)=>{
