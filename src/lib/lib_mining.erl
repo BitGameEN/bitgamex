@@ -69,7 +69,7 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
                               0 ->
                                   [AddGold];
                               _ ->
-                                  Average = util:round5d(AddGold / DurationSeconds / 7200),
+                                  Average = util:round5d(AddGold / (DurationSeconds / 7200)),
                                   L = lists:duplicate(N, Average),
                                   Remainder = AddGold - Average * N,
                                   [Remainder | L]

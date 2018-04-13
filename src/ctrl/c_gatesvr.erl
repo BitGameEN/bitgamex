@@ -48,8 +48,10 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
                 Uid
         end,
     User = usr_user:get_one(UserId),
-    case Uid > 0 andalso DeviceId =/= User#usr_user.org_device_id of
-        true ->
+    case Uid > 0 andalso
+             GCId =:= <<>> andalso GGId =:= <<>> andalso FBId =:= <<>> andalso
+             DeviceId =/= User#usr_user.org_device_id of
+        true -> % 没有任何绑定的情况下，设备id必须一致
             throw({?ERRNO_VERIFY_FAILED, <<"device_id verify failed">>});
         false ->
             void
