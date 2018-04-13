@@ -3,6 +3,3 @@ ebin/logs*
 ebin/global_run_data_*
 ebin/erl_crash.dump
 ebin/http_requests_*
-bitgame/Library/*
-bitgame/Temp/*
-bitgame/obj/Debug/*
