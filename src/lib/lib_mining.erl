@@ -64,7 +64,20 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
     case AddGold > 0 of
         true ->
             lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
-            lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{util:unixtime(), AddGold}]);
+            N = DurationSeconds div 7200,
+            AddGoldList = case N of
+                              0 ->
+                                  [AddGold];
+                              _ ->
+                                  Average = util:round5d(AddGold / DurationSeconds / 7200),
+                                  L = lists:duplicate(N, Average),
+                                  Remainder = AddGold - Average * N,
+                                  [Remainder | L]
+                          end,
+            Now = util:unixtime(),
+            TimeList = [Now - (I - 1) * 7200 || I <- lists:seq(1, length(AddGoldList))],
+            TimeToAddGoldPairs = lists:zip(TimeList, AddGoldList),
+            [lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{T, G}]) || {T, G} <- TimeToAddGoldPairs];
         false -> void
     end,
     ok.
