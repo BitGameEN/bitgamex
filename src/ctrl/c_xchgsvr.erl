@@ -106,6 +106,7 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, Recei
                             false -> -1
                         end,
                     lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, Amount0}),
+                    lib_game:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
                     lib_game:add_reclaimed_gold(GameId, GoldType, Amount0 * TransferDiscountToXchg),
                     RoleGold = run_role_gold:get_one({GameId, UserId}),
                     {ok, RoleGold#run_role_gold.gold, Balance}

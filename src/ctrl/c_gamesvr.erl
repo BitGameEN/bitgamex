@@ -217,6 +217,8 @@ consume_coin(GameId, UserId, GoldType, Amount) ->
 
     lib_role_gold:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
     lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount),
+    lib_game:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
+    lib_game:add_reclaimed_gold(GameId, GoldType, Amount),
     RoleGold = run_role_gold:get_one({GameId, UserId}),
     run_data:trans_commit(),
     {ok, RoleGold#run_role_gold.gold}
