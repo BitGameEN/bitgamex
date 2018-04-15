@@ -125,15 +125,15 @@ CREATE TABLE `user` (
   `bind_wallet_addr` varchar(50) NOT NULL DEFAULT '' COMMENT '绑定的钱包地址',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `org_device_id` (`org_device_id`) USING BTREE,
   KEY `current_game_id` (`current_game_id`),
   KEY `is_bind` (`is_bind`,`device_id`),
-  KEY `ios_gamecenter_id` (`ios_gamecenter_id`),
-  KEY `google_id` (`google_id`),
-  KEY `facebook_id` (`facebook_id`),
   KEY `country_code` (`country_code`),
   KEY `create_time` (`create_time`),
-  KEY `status` (`status`)
+  KEY `status` (`status`),
+  KEY `org_device_id` (`org_device_id`) USING BTREE,
+  KEY `ios_gamecenter_id` (`ios_gamecenter_id`) USING BTREE,
+  KEY `google_id` (`google_id`) USING BTREE,
+  KEY `facebook_id` (`facebook_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏中心账户';
 
 -- ----------------------------

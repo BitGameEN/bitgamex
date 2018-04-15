@@ -4,7 +4,7 @@
 %%%--------------------------------------
 -module(lib_user).
 -export([lock/1, unlock/2]).
--export([get_last_login_uid_of_org_device_id/1, get_unbind_uid_of_org_device_id/1]).
+-export([get_last_login_uid_of_org_device_id/1, get_unbind_uid_of_org_device_id/1, get_bind_uid/2]).
 
 -include("common.hrl").
 
@@ -37,4 +37,22 @@ get_unbind_uid_of_org_device_id(DeviceId) ->
         null -> -1;
         Id -> Id
     end.
+
+get_bind_uid(<<"gc_id">> = BindType, BindVal) ->
+    case usr_user:get_user_gids_by_ios_gamecenter_id(BindVal) of
+        [] -> throw({-1, <<"gc_id not bound by any users">>});
+        [Id|_] -> Id
+    end;
+get_bind_uid(<<"gg_id">> = BindType, BindVal) ->
+    case usr_user:get_user_gids_by_google_id(BindVal) of
+        [] -> throw({-1, <<"gg_id not bound by any users">>});
+        [Id|_] -> Id
+    end;
+get_bind_uid(<<"fb_id">> = BindType, BindVal) ->
+    case usr_user:get_user_gids_by_facebook_id(BindVal) of
+        [] -> throw({-1, <<"fb_id not bound by any users">>});
+        [Id|_] -> Id
+    end;
+get_bind_uid(BindType, _BindVal) ->
+    throw({?ERRNO_WRONG_PARAM, <<"unsupported bind_type: ", BindType/binary>>}).
 

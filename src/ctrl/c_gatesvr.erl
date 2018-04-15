@@ -5,6 +5,7 @@
 -module(c_gatesvr).
 -export([api_login_game/1,
          api_bind_user/1,
+         api_switch_user/1,
          api_get_game/1,
          api_save_game/1,
          api_transfer_coin_in_game/1,
@@ -19,6 +20,7 @@
 -include("common.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
+-include("record_run_role.hrl").
 -include("record_log_player_login.hrl").
 
 
@@ -68,9 +70,7 @@ api_login_game([Uid, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVe
                 Uid
         end,
     User = usr_user:get_one(UserId),
-    case Uid > 0 andalso
-             GCId =:= <<>> andalso GGId =:= <<>> andalso FBId =:= <<>> andalso
-             DeviceId =/= User#usr_user.org_device_id of
+    case Uid > 0 andalso User#usr_user.is_bind =:= 0 andalso DeviceId =/= User#usr_user.org_device_id of
         true -> % 没有任何绑定的情况下，设备id必须一致
             throw({?ERRNO_VERIFY_FAILED, <<"device_id verify failed">>});
         false ->
@@ -117,56 +117,104 @@ create_session_token(Uid, GameId, DeviceId) ->
     list_to_binary(StrCode).
 
 %% 绑定账号接口
-api_bind_user([#usr_user{ios_gamecenter_id = CurrBindVal} = User, <<"gc_id">>, BindVal]) ->
+api_bind_user([#usr_user{ios_gamecenter_id = CurrBindVal, current_game_id = GameId} = User, <<"gc_id">> = BindType, BindVal]) ->
     case CurrBindVal of
         <<>> ->
             case usr_user:get_user_gids_by_ios_gamecenter_id(BindVal) of
                 [] ->
                     usr_user:set_one(User#usr_user{ios_gamecenter_id = BindVal, is_bind = 1, time = util:unixtime()}),
-                    {ok, #{}};
-                _ ->
-                    throw({-1, <<"gc_id already bound by others">>})
+                    {ok, #{bind_type => BindType, bind_val => BindVal}};
+                [OtherUserId|_] ->
+                    case run_role:get_one({GameId, OtherUserId}) of
+                        [] ->
+                            throw({-1, <<"gc_id already bound by others">>});
+                        #run_role{create_time = CT, last_login_time = LT, game_data = GameData, power = Power} ->
+                            FoundRole = {[{bind_type, BindType}, {bind_val, BindVal}, {uid, OtherUserId},
+                                          {create_time, CT}, {login_time, LT}, {power, Power}, {game_data, GameData}]},
+                            throw({-2, jiffy:encode(FoundRole)})
+                    end
             end;
         _ ->
             case CurrBindVal =:= BindVal of
-                true -> {ok, #{}};
-                false -> throw({-2, <<"already bound something else">>})
+                true -> {ok, #{bind_type => BindType, bind_val => BindVal}};
+                false -> throw({-3, <<"already bound something else">>})
             end
     end;
-api_bind_user([#usr_user{google_id = CurrBindVal} = User, <<"gg_id">>, BindVal]) ->
+api_bind_user([#usr_user{google_id = CurrBindVal, current_game_id = GameId} = User, <<"gg_id">> = BindType, BindVal]) ->
     case CurrBindVal of
         <<>> ->
             case usr_user:get_user_gids_by_google_id(BindVal) of
                 [] ->
                     usr_user:set_one(User#usr_user{google_id = BindVal, is_bind = 1, time = util:unixtime()}),
-                    {ok, #{}};
-                _ ->
-                    throw({-1, <<"gg_id already bound by others">>})
+                    {ok, #{bind_type => BindType, bind_val => BindVal}};
+                [OtherUserId|_] ->
+                    case run_role:get_one({GameId, OtherUserId}) of
+                        [] ->
+                            throw({-1, <<"gg_id already bound by others">>});
+                        #run_role{create_time = CT, last_login_time = LT, game_data = GameData, power = Power} ->
+                            FoundRole = {[{bind_type, BindType}, {bind_val, BindVal}, {uid, OtherUserId},
+                                          {create_time, CT}, {login_time, LT}, {power, Power}, {game_data, GameData}]},
+                            throw({-2, jiffy:encode(FoundRole)})
+                    end
             end;
         _ ->
             case CurrBindVal =:= BindVal of
-                true -> {ok, #{}};
-                false -> throw({-2, <<"already bound something else">>})
+                true -> {ok, #{bind_type => BindType, bind_val => BindVal}};
+                false -> throw({-3, <<"already bound something else">>})
             end
     end;
-api_bind_user([#usr_user{facebook_id = CurrBindVal} = User, <<"fb_id">>, BindVal]) ->
+api_bind_user([#usr_user{facebook_id = CurrBindVal, current_game_id = GameId} = User, <<"fb_id">> = BindType, BindVal]) ->
     case CurrBindVal of
         <<>> ->
             case usr_user:get_user_gids_by_facebook_id(BindVal) of
                 [] ->
                     usr_user:set_one(User#usr_user{facebook_id = BindVal, is_bind = 1, time = util:unixtime()}),
-                    {ok, #{}};
-                _ ->
-                    throw({-1, <<"fb_id already bound by others">>})
+                    {ok, #{bind_type => BindType, bind_val => BindVal}};
+                [OtherUserId|_] ->
+                    case run_role:get_one({GameId, OtherUserId}) of
+                        [] ->
+                            throw({-1, <<"fb_id already bound by others">>});
+                        #run_role{create_time = CT, last_login_time = LT, game_data = GameData, power = Power} ->
+                            FoundRole = {[{bind_type, BindType}, {bind_val, BindVal}, {uid, OtherUserId},
+                                          {create_time, CT}, {login_time, LT}, {power, Power}, {game_data, GameData}]},
+                            throw({-2, jiffy:encode(FoundRole)})
+                    end
             end;
         _ ->
             case CurrBindVal =:= BindVal of
-                true -> {ok, #{}};
-                false -> throw({-2, <<"already bound something else">>})
+                true -> {ok, #{bind_type => BindType, bind_val => BindVal}};
+                false -> throw({-3, <<"already bound something else">>})
             end
     end;
 api_bind_user([_User, BindType, _BindVal]) ->
     throw({?ERRNO_WRONG_PARAM, <<"unsupported bind_type: ", BindType/binary>>}).
+
+%% 切换账号接口
+api_switch_user([#usr_user{id = CurrUserId, current_game_id = GameId, device_id = DeviceId} = User, BindType, BindVal]) ->
+    ToUserId = lib_user:get_bind_uid(BindType, BindVal),
+    case ToUserId =:= CurrUserId of
+        true ->
+            throw({-2, <<"can not switch to current user">>});
+        false ->
+            case run_role:get_one({GameId, ToUserId}) of
+                [] ->
+                    throw({-3, <<"no role found for switching user">>});
+                _ ->
+                    ToUser = usr_user:get_one(ToUserId),
+                    Time = util:unixtime(),
+                    NewGuest = 0,
+                    DeviceModel = <<>>,
+                    OsType = <<>>,
+                    OsVer = <<>>,
+                    Lang = <<>>,
+                    OrgDeviceId = ToUser#usr_user.org_device_id,
+                    GCId = ToUser#usr_user.ios_gamecenter_id,
+                    GGId = ToUser#usr_user.google_id,
+                    FBId = ToUser#usr_user.facebook_id,
+                    PeerIp = <<>>,
+                    api_login_game([ToUserId, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp])
+            end
+    end.
 
 %% 存盘数据获取接口
 api_get_game([#usr_user{current_game_id = GameId, id = UserId} = User]) ->

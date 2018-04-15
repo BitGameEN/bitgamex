@@ -131,6 +131,43 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_bind_user([User, BindType, BindVal]);
 
+% https://api.bitgamex.com/?a=switch_user&uid=xx&game_id=xx&token=xx&bind_type=xx&bind_val=xx&time=xx&sign=xx
+action(<<"GET">>, <<"switch_user">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, bind_type, bind_val, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, bind_type := BindType0, bind_val := BindVal0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("bind_user: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, BindType0, BindVal0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, BindType, BindVal, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, BindType, BindVal, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    %Time = binary_to_integer(TimeBin),
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, BindType/binary, BindVal/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_switch_user([User, BindType, BindVal]);
+
 % https://api.bitgamex.com/?a=get_game&uid=xx&game_id=xx&token=xx
 action(<<"GET">>, <<"get_game">> = Action, Req) ->
     ParamsMap = cowboy_req:match_qs([uid, game_id, token], Req),
