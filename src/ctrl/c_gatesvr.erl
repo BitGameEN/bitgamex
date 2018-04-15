@@ -23,7 +23,7 @@
 
 
 %% 登录游戏接口
-api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
+api_login_game([Uid, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
     Now = util:unixtime(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     UserId =
@@ -41,8 +41,28 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
                         Id = usr_user:set_one(ToCreateUser),
                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
                         Id;
-                    [Id|_] ->
-                        Id
+                    Ids ->
+                        case NewGuest =:= 0 of
+                            true ->
+                                % 找到在该设备上创建的并最后登录的那个账号
+                                lib_user:get_last_login_uid_of_org_device_id(DeviceId);
+                            false -> % 如果需要新建一个guest
+                                case lib_user:get_unbind_uid_of_org_device_id(DeviceId) of
+                                    -1 -> % 都绑定过，则允许创建一个新guest
+                                        ToCreateUser = #usr_user{device_id = DeviceId,
+                                                                 org_device_id = DeviceId,
+                                                                 lang = Lang,
+                                                                 os_type = OsType,
+                                                                 country_code = util:get_country_code(PeerIp),
+                                                                 create_time = Now,
+                                                                 time = Now},
+                                        Id = usr_user:set_one(ToCreateUser),
+                                        usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                                        Id;
+                                    UnbindId -> % 还有未绑定的，则用这个未绑定的账号
+                                        UnbindId
+                                end
+                        end
                 end;
             false ->
                 Uid
@@ -85,7 +105,8 @@ api_login_game([Uid, GameId, DeviceId, Time, DeviceModel, OsType, OsVer, Lang, O
     log_player_login:set_one(LogR),
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
-           exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr}}.
+           exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
+           gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}}.
 
 create_session_token(Uid, GameId, DeviceId) ->
     Time = util:unixtime(),

@@ -4,6 +4,7 @@
 %%%--------------------------------------
 -module(lib_user).
 -export([lock/1, unlock/2]).
+-export([get_last_login_uid_of_org_device_id/1, get_unbind_uid_of_org_device_id/1]).
 
 -include("common.hrl").
 
@@ -24,4 +25,16 @@ unlock(PlayerId, Cas) ->
 
 cache_lock_key(PlayerId) ->
     list_to_binary(io_lib:format(<<"lock_usr_~p">>, [PlayerId])).
+
+get_last_login_uid_of_org_device_id(DeviceId) ->
+    case db_esql:get_one(?DB_USR, <<"select id from user where org_device_id=? order by last_login_time desc limit 1">>, [DeviceId]) of
+        null -> -1;
+        Id -> Id
+    end.
+
+get_unbind_uid_of_org_device_id(DeviceId) ->
+    case db_esql:get_one(?DB_USR, <<"select id from user where org_device_id=? and is_bind=0 limit 1">>, [DeviceId]) of
+        null -> -1;
+        Id -> Id
+    end.
 
