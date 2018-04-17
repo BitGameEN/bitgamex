@@ -243,7 +243,7 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
 
 % https://api.bitgamex.com/?a=transfer_coin_in_game&uid=xx&game_id=xx&token=xx&dst_uid=xx&coin_type=xx&amount=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, dst_uid, coin_type, amount, time, sign], Req),
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, dst_uid, {coin_type, [], ?DEFAULT_GOLD_TYPE}, amount, time, sign], Req),
     #{uid := UidBin0, game_id := GameIdBin0, token := Token0, dst_uid := DstUidBin0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_in_game: ~p~n", [ParamsMap]),
     L = [UidBin0, GameIdBin0, Token0, DstUidBin0, GoldType0, AmountBin0, TimeBin0, Sign0],
@@ -377,7 +377,7 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
 
 % https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, time, sign], Req),
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, {coin_type, [], ?DEFAULT_GOLD_TYPE}, amount, time, sign], Req),
     #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_to_exchange: ~p~n", [ParamsMap]),
     L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, TimeBin0, Sign0],
