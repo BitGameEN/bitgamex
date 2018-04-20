@@ -113,6 +113,7 @@ CREATE TABLE `user` (
   `google_id` varchar(40) NOT NULL DEFAULT '' COMMENT '绑定谷歌id',
   `facebook_id` varchar(40) NOT NULL DEFAULT '' COMMENT '绑定脸书id',
   `current_game_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '当前所在游戏',
+  `current_game_uid` varchar(50) NOT NULL DEFAULT '' COMMENT '当前所在游戏用户标识',
   `session_token` varchar(50) NOT NULL DEFAULT '' COMMENT '会话令牌',
   `lang` varchar(20) NOT NULL DEFAULT '' COMMENT '语言',
   `os_type` varchar(20) NOT NULL DEFAULT '' COMMENT '操作系统类型',
