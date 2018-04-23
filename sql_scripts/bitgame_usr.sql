@@ -28,6 +28,10 @@ CREATE TABLE `game` (
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
   `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
   `hard_coef` float NOT NULL DEFAULT '1' COMMENT '难度系数，难度高给分紧的：> 1，难度低给分松的：< 1，其余：= 1',
+  `trusteeship_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT '游戏信用金托管账户游戏方无权使用，给用户提取使用',
+  `cp_name` varchar(50) NOT NULL DEFAULT '' COMMENT '开发商名称',
+  `cp_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT '开发商支取账号，用户消耗代币行为收取利润账户',
+  `ip_list` varchar(160) NOT NULL DEFAULT '' COMMENT 'IP列表',
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';
