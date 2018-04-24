@@ -48,9 +48,9 @@ unlock_user() ->
 action(_, undefined, _Req) ->
     throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
 
-% https://api.bitgamex.com/?a=login_game&uid=xx&game_id=xx&device_id=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=login_game&uid=xx&game_id=xx&device_id=xx&user_name=xx&password=xx&time=xx&sign=xx
 action(<<"GET">>, <<"login_game">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, device_id, time, sign,
+    ParamsMap = cowboy_req:match_qs([uid, game_id, device_id, user_name, password, time, sign,
                                      {new_guest, [], <<"0">>},
                                      {device_model, [], undefined},
                                      {os_type, [], undefined},
@@ -60,12 +60,12 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
                                      {gc_id, [], undefined},
                                      {gg_id, [], undefined},
                                      {fb_id, [], undefined}], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, device_id := DeviceId0, time := TimeBin0, sign := Sign0,
+    #{uid := UidBin0, game_id := GameIdBin0, device_id := DeviceId0, user_name := UserName0, password := Password0, time := TimeBin0, sign := Sign0,
       new_guest := NewGuestBin0, device_model := DeviceModel0, os_type := OsType0, os_ver := OsVer0, lang := Lang0,
       org_device_id := OrgDeviceId0, gc_id := GCId0, gg_id := GGId0, fb_id := FBId0} = ParamsMap,
     ?DBG("login_game: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, DeviceId0, TimeBin0, Sign0, NewGuestBin0, DeviceModel0, OsType0, OsVer0, Lang0, OrgDeviceId0, GCId0, GGId0, FBId0],
-    [UidBin, GameIdBin, DeviceId, TimeBin, Sign, NewGuestBin, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
+    L = [UidBin0, GameIdBin0, DeviceId0, UserName0, Password0, TimeBin0, Sign0, NewGuestBin0, DeviceModel0, OsType0, OsVer0, Lang0, OrgDeviceId0, GCId0, GGId0, FBId0],
+    [UidBin, GameIdBin, DeviceId, TimeBin, UserName, Password, Sign, NewGuestBin, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, DeviceId, TimeBin, Sign, NewGuestBin]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
@@ -83,7 +83,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    MD5Bin = <<UidBin/binary, GameIdBin/binary, DeviceId/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, DeviceId/binary, UserName/binary, Password/binary, TimeBin/binary, GameKey/binary>>,
     MD5Val = util:md5(MD5Bin),
     case Sign =:= list_to_binary(MD5Val) of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
@@ -91,8 +91,44 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
     end,
     {PeerIp, _} = maps:get(peer, Req),
     lock_user(Uid),
-    c_gatesvr:api_login_game([Uid, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVer,
-                              Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]);
+    c_gatesvr:api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]);
+
+% https://api.bitgamex.com/?a=change_password&uid=xx&game_id=xx&token=xx&user_name=xx&old_password=xx&new_password=xx&time=xx&sign=xx
+action(<<"GET">>, <<"change_password">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, user_name, old_password, new_password, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, user_name := UserName0, old_password := OldPassword0, new_password := NewPassword0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("bind_user: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, UserName0, OldPassword0, NewPassword0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, UserName, OldPassword, NewPassword, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, UserName, OldPassword, NewPassword, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    %Time = binary_to_integer(TimeBin),
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, UserName/binary, OldPassword/binary, NewPassword/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_change_password([User, UserName, OldPassword, NewPassword]);
 
 % https://api.bitgamex.com/?a=bind_user&uid=xx&game_id=xx&token=xx&bind_type=xx&bind_val=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_user">> = Action, Req) ->

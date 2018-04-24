@@ -4,6 +4,7 @@
 %%%--------------------------------------
 -module(c_gatesvr).
 -export([api_login_game/1,
+         api_change_password/1,
          api_bind_user/1,
          api_switch_user/1,
          api_get_game/1,
@@ -25,7 +26,7 @@
 
 
 %% 登录游戏接口
-api_login_game([Uid, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
+api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
     Now = util:unixtime(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     UserId =
@@ -106,6 +107,62 @@ api_login_game([Uid, GameId, DeviceId, Time, NewGuest, DeviceModel, OsType, OsVe
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
+           gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}};
+api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) when UserName =/= <<>> ->
+    Now = util:unixtime(),
+    SessionToken = create_session_token(Uid, GameId, DeviceId),
+    % todo: 以后得考虑用手机号一起绑定注册（发验证码）或QQ、微信授权登录（而这实际上相当于获取一个device_id），避免无限建小号
+    UserId =
+        case Uid =:= 0 of
+            true ->
+                case usr_user:get_user_gids_by_user_name(UserName) of
+                    [] ->
+                        ToCreateUser = #usr_user{user_name = UserName,
+                                                 password = Password,
+                                                 device_id = DeviceId,
+                                                 org_device_id = DeviceId,
+                                                 lang = Lang,
+                                                 os_type = OsType,
+                                                 country_code = util:get_country_code(PeerIp),
+                                                 create_time = Now,
+                                                 time = Now},
+                        Id = usr_user:set_one(ToCreateUser),
+                        usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                        Id;
+                    [Id|_] ->
+                        Id
+                end;
+            false ->
+                Uid
+        end,
+    User = usr_user:get_one(UserId),
+    case User#usr_user.user_name =:= UserName andalso User#usr_user.password =:= Password of
+        false ->
+            throw({?ERRNO_VERIFY_FAILED, <<"user name and password verify failed">>});
+        true ->
+            void
+    end,
+    ToUpdateUser = User#usr_user{device_id = DeviceId,
+                                 current_game_id = GameId,
+                                 session_token = SessionToken,
+                                 last_login_time = Now,
+                                 time = Now},
+    usr_user:set_one(ToUpdateUser),
+    LogR = #log_player_login{
+                game_id = GameId,
+                player_id = UserId,
+                device_id = DeviceId,
+                device_model = util:esc(util:device_model(DeviceModel)),
+                os_type = OsType,
+                os_ver = OsVer,
+                ip = ?T2B(PeerIp),
+                lang = Lang,
+                time = Now
+            },
+    log_player_login:set_one(LogR),
+    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
+    {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
+           exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}}.
 
 create_session_token(Uid, GameId, DeviceId) ->
@@ -115,6 +172,21 @@ create_session_token(Uid, GameId, DeviceId) ->
     StrCode = util:md5(integer_to_list(Uid) ++ integer_to_list(GameId) ++ binary_to_list(DeviceId) ++
                            integer_to_list(Time) ++ float_to_list(Rand) ++ HardcodeKey),
     list_to_binary(StrCode).
+
+%% 修改密码接口
+api_change_password([#usr_user{user_name = TargetUserName, password = TargetPassword} = User, UserName, OldPassword, NewPassword]) ->
+    case TargetUserName =:= UserName andalso TargetPassword =:= OldPassword of
+        false ->
+            throw({-1, <<"user name and password verify failed">>});
+        true ->
+            case OldPassword =:= NewPassword of
+                true ->
+                    void;
+                false ->
+                    usr_user:set_one(User#usr_user{password = NewPassword, time = util:unixtime()})
+            end,
+            {ok, #{}}
+    end.
 
 %% 绑定账号接口
 api_bind_user([#usr_user{ios_gamecenter_id = CurrBindVal, current_game_id = GameId} = User, <<"gc_id">> = BindType, BindVal]) ->

@@ -108,6 +108,8 @@ CREATE TABLE `server` (
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '用户id（玩家id）',
+  `user_name` varchar(50) NOT NULL DEFAULT '' COMMENT '用户名',
+  `password` varchar(50) NOT NULL DEFAULT '' COMMENT '登录密码',
   `player_name` varchar(50) NOT NULL DEFAULT '' COMMENT '玩家名',
   `avatar` tinyint(2) NOT NULL DEFAULT '0' COMMENT '玩家头像',
   `device_id` varchar(200) NOT NULL DEFAULT '' COMMENT '设备id',
@@ -138,7 +140,8 @@ CREATE TABLE `user` (
   KEY `org_device_id` (`org_device_id`) USING BTREE,
   KEY `ios_gamecenter_id` (`ios_gamecenter_id`) USING BTREE,
   KEY `google_id` (`google_id`) USING BTREE,
-  KEY `facebook_id` (`facebook_id`) USING BTREE
+  KEY `facebook_id` (`facebook_id`) USING BTREE,
+  KEY `user_name` (`user_name`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏中心账户';
 
 -- ----------------------------

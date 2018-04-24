@@ -6,6 +6,8 @@
 -record(usr_user, {
 		key_id,
 		id = 0, % 用户id（玩家id）
+		user_name = <<"">>, % 用户名
+		password = <<"">>, % 登录密码
 		player_name = <<"">>, % 玩家名
 		avatar = 0, % 玩家头像
 		device_id = <<"">>, % 设备id
@@ -15,6 +17,7 @@
 		google_id = <<"">>, % 绑定谷歌id
 		facebook_id = <<"">>, % 绑定脸书id
 		current_game_id = 0, % 当前所在游戏
+		current_game_uid = <<"">>, % 当前所在游戏用户标识
 		session_token = <<"">>, % 会话令牌
 		lang = <<"">>, % 语言
 		os_type = <<"">>, % 操作系统类型
