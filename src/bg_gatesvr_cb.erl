@@ -65,7 +65,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
       org_device_id := OrgDeviceId0, gc_id := GCId0, gg_id := GGId0, fb_id := FBId0} = ParamsMap,
     ?DBG("login_game: ~p~n", [ParamsMap]),
     L = [UidBin0, GameIdBin0, DeviceId0, UserName0, Password0, TimeBin0, Sign0, NewGuestBin0, DeviceModel0, OsType0, OsVer0, Lang0, OrgDeviceId0, GCId0, GGId0, FBId0],
-    [UidBin, GameIdBin, DeviceId, TimeBin, UserName, Password, Sign, NewGuestBin, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
+    [UidBin, GameIdBin, DeviceId, UserName, Password, TimeBin, Sign, NewGuestBin, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId] = [util:trim(One) || One <- L],
     case lists:member(<<>>, [UidBin, GameIdBin, DeviceId, TimeBin, Sign, NewGuestBin]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
