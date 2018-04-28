@@ -32,6 +32,8 @@ CREATE TABLE `game` (
   `cp_name` varchar(50) NOT NULL DEFAULT '' COMMENT '开发商名称',
   `cp_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT '开发商支取账号，用户消耗代币行为收取利润账户',
   `ip_list` varchar(160) NOT NULL DEFAULT '' COMMENT 'IP列表',
+  `token_symbol_list` varchar(255) NOT NULL DEFAULT '' COMMENT '游戏可交易代币列表',
+  `game_type` int(1) NOT NULL DEFAULT '0' COMMENT '游戏类型，1:游戏中心托管的单机游戏,2:对接SDK的网络游戏,3.独立区块链游戏',
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';
