@@ -12,7 +12,7 @@ get_one(Game_id = Id) ->
 		{true, _Cas, Val} ->
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_USR, <<"select game_id,game_name,open_status,game_key,balance_lua_f,hard_coef from game where game_id=?">>, [Game_id]) of
+			case db_esql:get_row(?DB_USR, <<"select game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type from game where game_id=?">>, [Game_id]) of
 				[] -> [];
 				Row ->
 					R = build_record_from_row(Row),
@@ -50,10 +50,16 @@ set_one(R0) when is_record(R0, usr_game) ->
 				open_status = Open_status,
 				game_key = Game_key,
 				balance_lua_f = Balance_lua_f,
-				hard_coef = Hard_coef
+				hard_coef = Hard_coef,
+				trusteeship_exuserid = Trusteeship_exuserid,
+				cp_name = Cp_name,
+				cp_exuserid = Cp_exuserid,
+				ip_list = Ip_list,
+				token_symbol_list = Token_symbol_list,
+				game_type = Game_type
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef) values(~p,'~s',~p,'~s','~s',~p); select last_insert_id()">>,
-				[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef])),
+			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(~p,'~s',~p,'~s','~s',~p,~p,'~s',~p,'~s','~s',~p); select last_insert_id()">>,
+				[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type])),
 			R = R0#usr_game{key_id = Insert_id, game_id = Insert_id},
 			cache:set(cache_key(R#usr_game.key_id), R),
 			R#usr_game.key_id
@@ -85,12 +91,18 @@ syncdb(R) when is_record(R, usr_game) ->
 		open_status = Open_status,
 		game_key = Game_key,
 		balance_lua_f = Balance_lua_f,
-		hard_coef = Hard_coef
+		hard_coef = Hard_coef,
+		trusteeship_exuserid = Trusteeship_exuserid,
+		cp_name = Cp_name,
+		cp_exuserid = Cp_exuserid,
+		ip_list = Ip_list,
+		token_symbol_list = Token_symbol_list,
+		game_type = Game_type
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef) values(?,?,?,?,?,?)">>,
-		[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef]).
+	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(?,?,?,?,?,?,?,?,?,?,?,?)">>,
+		[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type]).
 
-build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f, Hard_coef]) ->
+build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f, Hard_coef, Trusteeship_exuserid, Cp_name, Cp_exuserid, Ip_list, Token_symbol_list, Game_type]) ->
 	#usr_game{
 		key_id = Game_id,
 		game_id = Game_id,
@@ -98,7 +110,13 @@ build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f,
 		open_status = Open_status,
 		game_key = Game_key,
 		balance_lua_f = Balance_lua_f,
-		hard_coef = Hard_coef
+		hard_coef = Hard_coef,
+		trusteeship_exuserid = Trusteeship_exuserid,
+		cp_name = Cp_name,
+		cp_exuserid = Cp_exuserid,
+		ip_list = Ip_list,
+		token_symbol_list = Token_symbol_list,
+		game_type = Game_type
 	}.
 
 cache_key(Game_id = Id) ->
