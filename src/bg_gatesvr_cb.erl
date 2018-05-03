@@ -333,6 +333,48 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_transfer_coin_in_game([User, DstUser, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
 
+% https://api.bitgamex.com/?a=send_verify_code&uid=xx&game_id=xx&token=xx&exchange_accid=xx&send_type=xx&time=xx&sign=xx
+action(<<"GET">>, <<"send_verify_code">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, exchange_accid, send_type, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, exchange_accid := ExchangeAccId0, send_type := SendTypeBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("send_verify_code: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, ExchangeAccId0, SendTypeBin0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, ExchangeAccId, SendTypeBin, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, ExchangeAccId, SendTypeBin, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    SendType = binary_to_integer(SendTypeBin),
+    %Time = binary_to_integer(TimeBin),
+    case lists:member(SendType, [1,2,3,4]) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong send type">>});
+        true -> void
+    end,
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, ExchangeAccId/binary, SendTypeBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]);
+
 % https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
     ParamsMap = cowboy_req:match_qs([uid, game_id, token, exchange_accid, time, sign], Req),

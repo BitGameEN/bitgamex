@@ -10,6 +10,7 @@
          api_get_game/1,
          api_save_game/1,
          api_transfer_coin_in_game/1,
+         api_send_verify_code/1,
          api_bind_exchange_accid/1,
          api_bind_wallet/1,
          api_transfer_coin_to_exchange/1,
@@ -302,6 +303,13 @@ api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData
 api_transfer_coin_in_game([#usr_user{current_game_id = GameId, id = UserId} = User, #usr_user{id = DstUserId} = DstUser, GoldType, Amount, ReceiptData]) ->
     {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, transfer_coin_in_game, [GameId, UserId, DstUserId, GoldType, Amount, ReceiptData]),
     {ok, #{role_balance => RoleGold}}.
+
+%% 发送验证码
+api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]) ->
+    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, send_verify_code, [GameId, GameKey, Uid, ExchangeAccId, SendType]) of
+        ok -> {ok, #{}};
+        Err -> throw(Err)
+    end.
 
 %% 绑定 BIT.GAME 交易所账号的接口
 api_bind_exchange_accid([User, ExchangeAccId]) ->
