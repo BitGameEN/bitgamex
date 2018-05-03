@@ -16,7 +16,7 @@
 -include("record_usr_gold_transfer.hrl").
 
 %-define(URL_PREFIX, "https://open.bitgamex.org/api/").
--define(URL_PREFIX, "https://127.0.0.1:8081/").
+-define(URL_PREFIX, "http://127.0.0.1:8081/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
 
 -define(TRANSFER_TO_XCHG_URL, "https://exchange_ip/?a=transfer_coin_to_exchange").
