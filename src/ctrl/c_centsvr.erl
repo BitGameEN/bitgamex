@@ -5,7 +5,7 @@
 -module(c_centsvr).
 
 -export([check_account/3,
-         send_valid_code/5]).
+         send_verify_code/5]).
 
 -include("common.hrl").
 -include("record_usr_user.hrl").
@@ -13,7 +13,7 @@
 %-define(URL_PREFIX, "https://open.bitgamex.org/api/").
 -define(URL_PREFIX, "http://127.0.0.1:8081/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
--define(SEND_VALID_CODE_URL, ?URL_PREFIX ++ "sendvalidcode").
+-define(SEND_VERIFY_CODE_URL, ?URL_PREFIX ++ "sendverifycode").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
@@ -35,7 +35,7 @@ check_account(GameId, GameKey, ExchangeAccId) ->
     end.
 
 %% https://github.com/BitGameEN/OpenAPI/blob/master/%E5%8F%91%E9%80%81%E9%AA%8C%E8%AF%81%E7%A0%81.md
-send_valid_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
+send_verify_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
     #usr_user{lang = Lang} = usr_user:get_one(PlayerId),
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
@@ -54,7 +54,7 @@ send_valid_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
               {sendtype, SendType},
               {timestamp, NowMilliSecs},
               {uid, PlayerId}],
-    case do_request(?SEND_VALID_CODE_URL, MD5Bin, Params) of
+    case do_request(?SEND_VERIFY_CODE_URL, MD5Bin, Params) of
         {ok, _} -> ok;
         Error -> throw(Error)
     end.
