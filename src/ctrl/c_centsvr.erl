@@ -35,7 +35,7 @@ check_account(GameId, GameKey, ExchangeAccId) ->
     end.
 
 %% https://github.com/BitGameEN/OpenAPI/blob/master/%E5%8F%91%E9%80%81%E9%AA%8C%E8%AF%81%E7%A0%81.md
-send_valid_code(GameId, Gamekey, PlayerId, ExchangeAccId, SendType) ->
+send_valid_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
     #usr_user{lang = Lang} = usr_user:get_one(PlayerId),
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
