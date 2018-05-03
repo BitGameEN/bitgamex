@@ -29,7 +29,7 @@
 check_account(GameId, GameKey, ExchangeAccId) ->
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary, "&bitaccount=", ExchangeAccId/binary, "&key=", GameKey/binary, "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
-    MD5Val = util:md5(MD5Bin),
+    MD5Val = list_to_binary(util:md5(MD5Bin)),
     Params = [{appid, GameId}, {bitaccount, ExchangeAccId}, {sign, MD5Val}, {timestamp, NowMilliSecs}],
     JsonParams = jsx:encode(Params),
     ?DBG("JsonParams: ~p~n", [JsonParams]),
