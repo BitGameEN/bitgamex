@@ -4,7 +4,6 @@
 %%%--------------------------------------
 -module(c_xchgsvr).
 
--export([check_account/3]).
 -export([transfer_gold_to_exchange/5, transfer_gold_to_wallet/6]).
 
 -include("common.hrl").
@@ -15,45 +14,12 @@
 -include("record_run_role_gold.hrl").
 -include("record_usr_gold_transfer.hrl").
 
-%-define(URL_PREFIX, "https://open.bitgamex.org/api/").
--define(URL_PREFIX, "http://127.0.0.1:8081/").
--define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
-
 -define(TRANSFER_TO_XCHG_URL, "https://exchange_ip/?a=transfer_coin_to_exchange").
 -define(TRANSFER_TO_WALLET_URL, "https://exchange_ip/?a=transfer_coin_to_wallet").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 -define(HTTP_CLIENT_TIMEOUT, 10000).
 -define(HTTP_CLIENT_OPTIONS, [{max_sessions, 100}, {max_pipeline_size, 10}]).
-
-check_account(GameId, GameKey, ExchangeAccId) ->
-    NowMilliSecs = util:longunixtime(),
-    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary, "&bitaccount=", ExchangeAccId/binary, "&key=", GameKey/binary, "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
-    MD5Val = list_to_binary(util:md5(MD5Bin)),
-    Params = [{appid, GameId}, {bitaccount, ExchangeAccId}, {sign, MD5Val}, {timestamp, NowMilliSecs}],
-    JsonParams = jsx:encode(Params),
-    ?DBG("JsonParams: ~p~n", [JsonParams]),
-    case ibrowse:send_req(?CHECK_ACCOUNT_URL, [?JSON_CONTENT], post, JsonParams) of
-        {ok, Status, Head, Body} ->
-            case Status of
-                "200" ->
-                    JsonObject = jsx:decode(list_to_binary(Body)),
-                    ?DBG("JsonObject: ~p~n", [JsonObject]),
-                    case lists:keyfind(<<"code">>, 1, JsonObject) of
-                        {_, 0} -> % 成功
-                            {ok, ExchangeAccId};
-                        {_, ErrCode} -> % 失败
-                            {_, ErrMsg} = lists:keyfind(<<"message">>, 1, JsonObject),
-                            throw({ErrCode, ErrMsg})
-                    end;
-                _ ->
-                    throw({?ERRNO_HTTP_REQ_FAILED, Body})
-            end;
-        {error, req_timedout} ->
-            throw({?ERRNO_HTTP_REQ_TIMEOUT, <<"request timeout">>});
-        {error, Reason} ->
-            throw({?ERRNO_HTTP_REQ_FAILED, Reason})
-    end.
 
 transfer_gold_to_exchange(GameId, UserId, GoldType, Amount, ReceiptData) ->
     transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, UserId, GoldType, Amount, <<>>, ReceiptData).

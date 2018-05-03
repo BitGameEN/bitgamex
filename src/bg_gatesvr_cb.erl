@@ -367,7 +367,7 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
-    case lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, check_account, [GameId, GameKey, ExchangeAccId]) of
+    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, check_account, [GameId, GameKey, ExchangeAccId]) of
         false -> throw({?ERRNO_INVALID_EXCHANGE_ID, <<"exchange account id check failed">>});
         true -> void
     end,
