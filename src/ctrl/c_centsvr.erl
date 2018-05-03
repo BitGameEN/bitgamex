@@ -18,9 +18,9 @@ check_account(GameId, GameKey, ExchangeAccId) ->
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary, "&bitaccount=", ExchangeAccId/binary, "&key=", GameKey/binary, "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
     Params = [{appid, GameId}, {bitaccount, ExchangeAccId}, {timestamp, NowMilliSecs}],
-    case catch do_request(?CHECK_ACCOUNT_URL, MD5Bin, Params) of
+    case do_request(?CHECK_ACCOUNT_URL, MD5Bin, Params) of
         {ok, _} -> true;
-        {-899, _ErrMsg} -> false
+        {-899, _ErrMsg} -> false;
         Error -> throw(Error)
     end.
 
@@ -41,7 +41,7 @@ do_request(Url, BinToSign, Params0) ->
                             {ok, Data};
                         {_, ErrCode} -> % 失败
                             {_, ErrMsg} = lists:keyfind(<<"message">>, 1, JsonObject),
-                            throw({ErrCode, ErrMsg})
+                            {ErrCode, ErrMsg}
                     end;
                 _ ->
                     throw({?ERRNO_HTTP_REQ_FAILED, Body})
