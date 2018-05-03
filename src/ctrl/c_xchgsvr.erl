@@ -29,7 +29,7 @@ check_account(GameId, GameKey, ExchangeAccId) ->
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary, "&bitaccount=", ExchangeAccId/binary, "&key=", GameKey/binary, "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
     MD5Val = util:md5(MD5Bin),
-    Params = #{appid => GameId, bitaccount => ExchangeAccId, sign => MD5Val, timestamp => NowMilliSecs},
+    Params = [{appid, GameId}, {bitaccount, ExchangeAccId}, {sign, MD5Val}, {timestamp, NowMilliSecs}],
     case ibrowse:send_req(?CHECK_ACCOUNT_URL, [?JSON_CONTENT], post, jsx:encode(Params)) of
         {ok, Status, Head, Body} ->
             case Status of
