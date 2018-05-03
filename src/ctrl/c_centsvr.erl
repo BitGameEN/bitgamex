@@ -4,23 +4,58 @@
 %%%--------------------------------------
 -module(c_centsvr).
 
--export([check_account/3]).
+-export([check_account/3,
+         send_valid_code/5]).
 
 -include("common.hrl").
+-include("record_usr_user.hrl").
 
 %-define(URL_PREFIX, "https://open.bitgamex.org/api/").
 -define(URL_PREFIX, "http://127.0.0.1:8081/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
+-define(SEND_VALID_CODE_URL, ?URL_PREFIX ++ "sendvalidcode").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
+%% https://github.com/BitGameEN/OpenAPI/blob/master/%E6%A3%80%E6%B5%8B%E4%BA%A4%E6%98%93%E6%89%80%E8%B4%A6%E6%88%B7.md
 check_account(GameId, GameKey, ExchangeAccId) ->
     NowMilliSecs = util:longunixtime(),
-    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary, "&bitaccount=", ExchangeAccId/binary, "&key=", GameKey/binary, "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
-    Params = [{appid, GameId}, {bitaccount, ExchangeAccId}, {timestamp, NowMilliSecs}],
+    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
+               "&bitaccount=", ExchangeAccId/binary,
+               "&key=", GameKey/binary,
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
+               %GameKey/binary>>,
+    Params = [{appid, GameId},
+              {bitaccount, ExchangeAccId},
+              {timestamp, NowMilliSecs}],
     case do_request(?CHECK_ACCOUNT_URL, MD5Bin, Params) of
         {ok, _} -> true;
         {-899, _ErrMsg} -> false;
+        Error -> throw(Error)
+    end.
+
+%% https://github.com/BitGameEN/OpenAPI/blob/master/%E5%8F%91%E9%80%81%E9%AA%8C%E8%AF%81%E7%A0%81.md
+send_valid_code(GameId, Gamekey, PlayerId, ExchangeAccId, SendType) ->
+    #usr_user{lang = Lang} = usr_user:get_one(PlayerId),
+    NowMilliSecs = util:longunixtime(),
+    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
+               "&appuid=", (integer_to_binary(PlayerId))/binary,
+               "&bitaccount=", ExchangeAccId/binary,
+               "&key=", GameKey/binary,
+               "&language=", Lang/binary,
+               "&sendtype=", (integer_to_binary(SendType))/binary,
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               "&uid=", (integer_to_binary(PlayerId))/binary>>,
+               %GameKey/binary>>,
+    Params = [{appid, GameId},
+              {appuid, PlayerId},
+              {bitaccount, ExchangeAccId},
+              {language, Lang},
+              {sendtype, SendType},
+              {timestamp, NowMilliSecs},
+              {uid, PlayerId}],
+    case do_request(?SEND_VALID_CODE_URL, MD5Bin, Params) of
+        {ok, _} -> ok;
         Error -> throw(Error)
     end.
 
