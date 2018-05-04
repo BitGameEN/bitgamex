@@ -22,11 +22,15 @@ add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0) when is_list(GoldL
         NewGoldList = case length(OldGoldList) < ?MAX_SIZE_GOLD_LIST of
                           true -> GoldListToDraw ++ OldGoldList;
                           false ->
-                              [{HeadT, HeadV} | _] = OldGoldListOfTheType,
-                              RestGoldList = lists:keydelete(HeadT, 1, OldGoldList),
-                              SumGold = lists:sum([V || {_, V} <- [{HeadT, HeadV} | GoldListToDraw0]]),
-                              MaxTime = lists:max([T || {T, _} <- GoldListToDraw0]),
-                              [{MaxTime, GoldType, SumGold} | RestGoldList]
+                              case OldGoldListOfTheType of
+                                  [{HeadT, HeadV} | _] ->
+                                      RestGoldList = lists:keydelete(HeadT, 1, OldGoldList),
+                                      SumGold = lists:sum([V || {_, V} <- [{HeadT, HeadV} | GoldListToDraw0]]),
+                                      MaxTime = lists:max([T || {T, _} <- GoldListToDraw0]),
+                                      [{MaxTime, GoldType, SumGold} | RestGoldList];
+                                  _ ->
+                                      GoldListToDraw ++ OldGoldList
+                              end
                       end,
         run_role_gold_to_draw:set_one(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList, time = util:unixtime()}),
         OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldListOfTheType]),
