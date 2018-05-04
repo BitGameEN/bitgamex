@@ -68,6 +68,7 @@ CREATE TABLE `game` (
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
   `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
   `hard_coef` float NOT NULL DEFAULT '1' COMMENT '难度系数，难度高给分紧的：> 1，难度低给分松的：< 1，其余：= 1',
+  `mining_rule` varchar(255) NOT NULL DEFAULT '[]' COMMENT 'erlang, æ ¼å¼ä¾‹å­ï¼š[{''BGX'', 30}, {''BTC'', 10}, {''ETH'', 10}, {''ELA'', 50}]',
   `trusteeship_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT 'æ¸¸æˆä¿¡ç”¨é‡‘æ‰˜ç®¡è´¦æˆ·æ¸¸æˆæ–¹æ— æƒä½¿ç”¨ï¼Œç»™ç”¨æˆ·æå–ä½¿ç”¨',
   `cp_name` varchar(50) NOT NULL DEFAULT '' COMMENT 'å¼€å‘å•†åç§°',
   `cp_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT 'å¼€å‘å•†æ”¯å–è´¦å·ï¼Œç”¨æˆ·æ¶ˆè€—ä»£å¸è¡Œä¸ºæ”¶å–åˆ©æ¶¦è´¦æˆ·',
@@ -85,7 +86,7 @@ CREATE TABLE `game` (
 
 LOCK TABLES `game` WRITE;
 /*!40000 ALTER TABLE `game` DISABLE KEYS */;
-INSERT INTO `game` (`game_id`, `game_name`, `open_status`, `game_key`, `balance_lua_f`, `hard_coef`, `trusteeship_exuserid`, `cp_name`, `cp_exuserid`, `ip_list`, `token_symbol_list`, `game_type`) VALUES (1,'test',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,0,'',0,'127.0.0.1',',eth-bgx,btc-btc,eth-eth,ela-ela,',0),(2,'pok',1,'3c579320371c4b12b9492fc75451ec80','',1,10001,'',0,'',',eth-pok,',1);
+INSERT INTO `game` (`game_id`, `game_name`, `open_status`, `game_key`, `balance_lua_f`, `hard_coef`, `mining_rule`, `trusteeship_exuserid`, `cp_name`, `cp_exuserid`, `ip_list`, `token_symbol_list`, `game_type`) VALUES (1,'test',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,'[{\'BGX\', 30}, {\'BTC\', 10}, {\'ETH\', 10}, {\'ELA\', 50}]',0,'',0,'127.0.0.1',',eth-bgx,btc-btc,eth-eth,ela-ela,',0),(2,'pok',1,'3c579320371c4b12b9492fc75451ec80','',1,'[]',10001,'',0,'',',eth-pok,',1);
 /*!40000 ALTER TABLE `game` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -461,4 +462,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-05-04 19:31:54
+-- Dump completed on 2018-05-04 20:08:54
