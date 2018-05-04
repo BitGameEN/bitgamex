@@ -85,7 +85,7 @@ save_game_data(GameId, UserId, GameData) ->
     Now = util:unixtime(),
     #usr_game{balance_lua_f = BalanceLuaF} = usr_game:get_one(GameId),
     #run_role{game_data = OldGameData} = Role = run_role:get_one({GameId, UserId}),
-    % todo：先假设游戏每次只给一种币，且只给BGX，后面再扩展
+    % todo：先假设游戏每次只给一种币，后面再扩展
     {GoldType, DeltaGold} =
         case BalanceLuaF of
             <<>> -> {?DEFAULT_GOLD_TYPE, 0};
@@ -102,7 +102,7 @@ save_game_data(GameId, UserId, GameData) ->
                 LuaState0 = luerl:init(),
                 {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
-                {?DEFAULT_GOLD_TYPE, V}
+                {lib_mining:get_gold_type(GameId), V}
         end,
 
     case DeltaGold > 0 of

@@ -16,6 +16,7 @@
         get_diff_days/2,
         md5/1,
         rand/2,
+        rand_list_index/1,
         round5d/1,
         clamp/3,
         ceil/1,
@@ -126,6 +127,28 @@ rand(Min, Max) ->
     end,
     M = Min - 1,
     rand:uniform(Max - M) + M.
+
+%%从一个随机list中随机一个index
+%%例如list是 [0.4, 0.3, 0.2, 0.1]，
+%%如果随机到一个数字 0.2 <0.4,则返回1
+%%如果随机到一个数字 0.5 <(0.4+0.3),则返回2
+%%如果随机到一个数字 0.8 <(0.4+0.3+0.2),则返回3
+%%如果随机到一个数字 0.918 >(0.4+0.3+0.2),则返回4
+rand_list_index([]) -> 0;
+rand_list_index(RateList) ->
+    CountRateSum = lists:sum(RateList),
+    CountRateSum2 = round(CountRateSum*10000),
+    Ram = util:rand(1,CountRateSum2),
+    Index = rand_list_index(RateList,Ram/10000),
+    Index.
+
+rand_list_index(RateList,Ram) ->
+    rand_list_index(RateList,Ram,0,0).
+
+rand_list_index(_,Ram,RateBase,Index) when RateBase >= Ram -> Index;
+rand_list_index([],_,_,Index) -> Index+1;
+rand_list_index([Rate|RateList2] = _RateList,Ram,RateBase,Index) ->
+    rand_list_index(RateList2,Ram,RateBase+Rate,Index+1).
 
 %%四舍五入保留5位小数
 round5d(N) ->
