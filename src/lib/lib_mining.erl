@@ -7,6 +7,7 @@
 -export([clear_cache_power_list/0]).
 
 -include("common.hrl").
+-include("gameConfig.hrl").
 -include("gameConfigGlobalKey.hrl").
 -include("record.hrl").
 -include("record_cfg_gold_type.hrl").
