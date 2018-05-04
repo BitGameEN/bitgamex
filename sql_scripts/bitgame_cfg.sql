@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 04/05/2018 11:41:26 AM
+ Date: 05/04/2018 20:36:34 PM
 */
 
 SET NAMES utf8;
@@ -33,7 +33,7 @@ CREATE TABLE `gold_type` (
 --  Records of `gold_type`
 -- ----------------------------
 BEGIN;
-INSERT INTO `gold_type` VALUES ('BGX', '1525017600', '1027397.26', '730');
+INSERT INTO `gold_type` VALUES ('BGX', '1525017600', '1027397.26', '730'), ('BTC', '1525017600', '10000.00', '730'), ('ELA', '1525017600', '100000.00', '730'), ('ETH', '1525017600', '100000.00', '730');
 COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;
