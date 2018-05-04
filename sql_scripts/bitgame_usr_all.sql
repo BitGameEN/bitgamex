@@ -68,22 +68,13 @@ CREATE TABLE `game` (
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
   `balance_lua_f` text NOT NULL COMMENT '结算lua脚本函数代码',
   `hard_coef` float NOT NULL DEFAULT '1' COMMENT '难度系数，难度高给分紧的：> 1，难度低给分松的：< 1，其余：= 1',
-<<<<<<< HEAD
-  `mining_rule` varchar(255) NOT NULL DEFAULT '[]' COMMENT 'erlang, æ ¼å¼ä¾‹å­ï¼š[{''BGX'', 30}, {''BTC'', 10}, {''ETH'', 10}, {''ELA'', 50}]',
-  `trusteeship_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT 'æ¸¸æˆä¿¡ç”¨é‡‘æ‰˜ç®¡è´¦æˆ·æ¸¸æˆæ–¹æ— æƒä½¿ç”¨ï¼Œç»™ç”¨æˆ·æå–ä½¿ç”¨',
-  `cp_name` varchar(50) NOT NULL DEFAULT '' COMMENT 'å¼€å‘å•†åç§°',
-  `cp_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT 'å¼€å‘å•†æ”¯å–è´¦å·ï¼Œç”¨æˆ·æ¶ˆè€—ä»£å¸è¡Œä¸ºæ”¶å–åˆ©æ¶¦è´¦æˆ·',
-  `ip_list` varchar(160) NOT NULL DEFAULT '' COMMENT 'IPåˆ—è¡¨',
-  `token_symbol_list` varchar(255) NOT NULL DEFAULT '' COMMENT 'æ¸¸æˆå¯äº¤æ˜“ä»£å¸åˆ—è¡¨',
-  `game_type` int(1) NOT NULL DEFAULT '0' COMMENT 'æ¸¸æˆç±»åž‹ï¼Œ0:æŒ–çŸ¿,1:ä¸æŒ–çŸ¿',
-=======
+  `mining_rule` varchar(255) NOT NULL DEFAULT '[]' COMMENT 'erlang, 格式例子：[{'BGX', 30}, {'BTC', 10}, {'ETH', 10}, {'ELA', 50}]',
   `trusteeship_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT '游戏信用金托管账户游戏方无权使用，给用户提取使用',
   `cp_name` varchar(50) NOT NULL DEFAULT '' COMMENT '开发商名称',
   `cp_exuserid` int(11) NOT NULL DEFAULT '0' COMMENT '开发商支取账号，用户消耗代币行为收取利润账户',
   `ip_list` varchar(160) NOT NULL DEFAULT '' COMMENT 'IP列表',
   `token_symbol_list` varchar(255) NOT NULL DEFAULT '' COMMENT '游戏可交易代币列表',
   `game_type` int(1) NOT NULL DEFAULT '0' COMMENT '游戏类型，0:挖矿,1:不挖矿',
->>>>>>> d8221be68dcebb5a2d32465e9adacc2c2c5e9893
   PRIMARY KEY (`game_id`),
   KEY `open_status` (`open_status`,`game_type`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COMMENT='游戏';
