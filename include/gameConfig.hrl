@@ -3,6 +3,9 @@
 %%% Description: 游戏逻辑定义
 %%%------------------------------------------------
 
+-define(GAME_TYPE_MINING, 0).
+-define(GAME_TYPE_NON_MINING, 1).
+
 -define(GOLD_TRANSFER_TYPE_IN_GAME, 0).
 -define(GOLD_TRANSFER_TYPE_GAME_TO_XCHG, 1).
 -define(GOLD_TRANSFER_TYPE_GAME_TO_WALLET, 2).

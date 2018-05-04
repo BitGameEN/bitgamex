@@ -3,7 +3,7 @@
 %%% @Description: 自动生成
 %%%--------------------------------------------------------
 -module(usr_game).
--export([get_one/1, get_game_gids_by_open_status/1, set_one/1, set_field/3, del_one/1, syncdb/1, clean_all_cache/0, cache_key/1]).
+-export([get_one/1, get_game_gids_by_game_type_and_open_status/1, set_one/1, set_field/3, del_one/1, syncdb/1, clean_all_cache/0, cache_key/1]).
 -include("common.hrl").
 -include("record_usr_game.hrl").
 
@@ -21,8 +21,8 @@ get_one(Game_id = Id) ->
 			end
 	end.
 
-get_game_gids_by_open_status(Open_status = Id) ->
-	case db_esql:get_all(?DB_USR, <<"select game_id from game where open_status=?">>, [Open_status]) of
+get_game_gids_by_game_type_and_open_status({Game_type, Open_status} = Id) ->
+	case db_esql:get_all(?DB_USR, <<"select game_id from game where game_type=? and open_status=?">>, [Game_type, Open_status]) of
 		[] -> [];
 		Rows ->
 			[Game_id_ || [Game_id_ | _] <- Rows]
