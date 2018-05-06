@@ -375,9 +375,9 @@ action(<<"GET">>, <<"send_verify_code">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]);
 
-% https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&verify_code=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, exchange_accid, time, sign], Req),
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, exchange_accid, verify_code, time, sign], Req),
     #{uid := UidBin0, game_id := GameIdBin0, token := Token0, exchange_accid := ExchangeAccId0, verify_code := VerifyCode0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("bind_exchange_accid: ~p~n", [ParamsMap]),
     L = [UidBin0, GameIdBin0, Token0, ExchangeAccId0, VerifyCode0, TimeBin0, Sign0],
