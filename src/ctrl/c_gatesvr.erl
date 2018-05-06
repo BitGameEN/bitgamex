@@ -313,6 +313,7 @@ api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]) ->
 
 %% 绑定 BIT.GAME 交易所账号的接口
 api_bind_exchange_accid([User, ExchangeAccId]) ->
+    
     usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
     {ok, #{exchange_accid => ExchangeAccId}}.
 

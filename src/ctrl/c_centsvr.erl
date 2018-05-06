@@ -22,9 +22,8 @@ check_account(GameId, GameKey, ExchangeAccId) ->
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
                "&bitaccount=", ExchangeAccId/binary,
-               "&key=", GameKey/binary,
-               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary>>,
-               %GameKey/binary>>,
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               GameKey/binary>>,
     Params = [{appid, GameId},
               {bitaccount, ExchangeAccId},
               {timestamp, NowMilliSecs}],
@@ -41,12 +40,11 @@ send_verify_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
                "&appuid=", (integer_to_binary(PlayerId))/binary,
                "&bitaccount=", ExchangeAccId/binary,
-               "&key=", GameKey/binary,
                "&language=", Lang/binary,
                "&sendtype=", (integer_to_binary(SendType))/binary,
                "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
-               "&uid=", (integer_to_binary(PlayerId))/binary>>,
-               %GameKey/binary>>,
+               "&uid=", (integer_to_binary(PlayerId))/binary,
+               GameKey/binary>>,
     Params = [{appid, GameId},
               {appuid, PlayerId},
               {bitaccount, ExchangeAccId},
@@ -58,6 +56,10 @@ send_verify_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
         {ok, _} -> ok;
         Error -> throw(Error)
     end.
+
+%% https://github.com/BitGameEN/OpenAPI/blob/master/%E7%BB%91%E5%AE%9A%E4%BA%A4%E6%98%93%E6%89%80%E8%B4%A6%E6%88%B7.md
+bind_exchange_accid() ->
+    ok.
 
 do_request(Url, BinToSign, Params0) ->
     MD5Val = list_to_binary(util:md5(BinToSign)),
