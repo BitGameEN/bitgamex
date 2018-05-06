@@ -60,18 +60,18 @@ send_verify_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
     end.
 
 %% https://github.com/BitGameEN/OpenAPI/blob/master/%E7%BB%91%E5%AE%9A%E4%BA%A4%E6%98%93%E6%89%80%E8%B4%A6%E6%88%B7.md
-bind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, Code) ->
+bind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, VerifyCode) ->
     NowMilliSecs = util:longunixtime(),
     MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
                "&appuid=", (integer_to_binary(PlayerId))/binary,
                "&bitaccount=", ExchangeAccId/binary,
-               "&code=", Code/binary,
+               "&code=", VerifyCode/binary,
                "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
                GameKey/binary>>,
     Params = [{appid, GameId},
               {appuid, PlayerId},
               {bitaccount, ExchangeAccId},
-              {code, Code},
+              {code, VerifyCode},
               {timestamp, NowMilliSecs}],
     case do_request(?BIND_ACCOUNT_URL, MD5Bin, Params) of
         {ok, _} -> ok;

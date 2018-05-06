@@ -415,7 +415,7 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
     %    true -> void
     %end,
     lock_user(Uid),
-    c_gatesvr:api_bind_exchange_accid([User, GameKey, ExchangeAccId, Code]);
+    c_gatesvr:api_bind_exchange_accid([User, GameKey, ExchangeAccId, VerifyCode]);
 
 % https://api.bitgamex.com/?a=bind_wallet&uid=xx&game_id=xx&token=xx&wallet_addr=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
