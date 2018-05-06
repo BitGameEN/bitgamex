@@ -312,10 +312,13 @@ api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]) ->
     end.
 
 %% 绑定 BIT.GAME 交易所账号的接口
-api_bind_exchange_accid([User, ExchangeAccId]) ->
-    
-    usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
-    {ok, #{exchange_accid => ExchangeAccId}}.
+api_bind_exchange_accid([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, ExchangeAccId, Code]) ->
+    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, bind_exchange_accid, [GameId, GameKey, UserId, ExchangeAccId, Code]) of
+        ok ->
+            usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
+            {ok, #{exchange_accid => ExchangeAccId}};
+        Err -> throw(Err)
+    end.
 
 %% 绑定以太坊钱包地址的接口
 api_bind_wallet([User, WalletAddr]) ->

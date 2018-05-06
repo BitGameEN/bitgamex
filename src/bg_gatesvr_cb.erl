@@ -378,11 +378,11 @@ action(<<"GET">>, <<"send_verify_code">> = Action, Req) ->
 % https://api.bitgamex.com/?a=bind_exchange_accid&uid=xx&game_id=xx&token=xx&exchange_accid=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
     ParamsMap = cowboy_req:match_qs([uid, game_id, token, exchange_accid, time, sign], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, exchange_accid := ExchangeAccId0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, exchange_accid := ExchangeAccId0, verify_code := VerifyCode0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("bind_exchange_accid: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, Token0, ExchangeAccId0, TimeBin0, Sign0],
-    [UidBin, GameIdBin, Token, ExchangeAccId, TimeBin, Sign] = [util:trim(One) || One <- L],
-    case lists:member(<<>>, [UidBin, GameIdBin, Token, ExchangeAccId, TimeBin, Sign]) of
+    L = [UidBin0, GameIdBin0, Token0, ExchangeAccId0, VerifyCode0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, ExchangeAccId, VerifyCode, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, ExchangeAccId, VerifyCode, TimeBin, Sign]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
@@ -409,12 +409,13 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
-    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, check_account, [GameId, GameKey, ExchangeAccId]) of
-        false -> throw({?ERRNO_INVALID_EXCHANGE_ID, <<"exchange account id check failed">>});
-        true -> void
-    end,
+    % centsvr会检查
+    %case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, check_account, [GameId, GameKey, ExchangeAccId]) of
+    %    false -> throw({?ERRNO_INVALID_EXCHANGE_ID, <<"exchange account id check failed">>});
+    %    true -> void
+    %end,
     lock_user(Uid),
-    c_gatesvr:api_bind_exchange_accid([User, ExchangeAccId]);
+    c_gatesvr:api_bind_exchange_accid([User, GameKey, ExchangeAccId, Code]);
 
 % https://api.bitgamex.com/?a=bind_wallet&uid=xx&game_id=xx&token=xx&wallet_addr=xx&time=xx&sign=xx
 action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->

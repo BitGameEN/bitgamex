@@ -5,7 +5,8 @@
 -module(c_centsvr).
 
 -export([check_account/3,
-         send_verify_code/5]).
+         send_verify_code/5,
+         bind_exchange_accid/5]).
 
 -include("common.hrl").
 -include("record_usr_user.hrl").
@@ -14,6 +15,7 @@
 -define(URL_PREFIX, "http://127.0.0.1:8081/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
 -define(SEND_VERIFY_CODE_URL, ?URL_PREFIX ++ "sendverifycode").
+-define(BIND_ACCOUNT_URL, ?URL_PREFIX ++ "bindaccount").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
@@ -58,8 +60,23 @@ send_verify_code(GameId, GameKey, PlayerId, ExchangeAccId, SendType) ->
     end.
 
 %% https://github.com/BitGameEN/OpenAPI/blob/master/%E7%BB%91%E5%AE%9A%E4%BA%A4%E6%98%93%E6%89%80%E8%B4%A6%E6%88%B7.md
-bind_exchange_accid() ->
-    ok.
+bind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, Code) ->
+    NowMilliSecs = util:longunixtime(),
+    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
+               "&appuid=", (integer_to_binary(PlayerId))/binary,
+               "&bitaccount=", ExchangeAccId/binary,
+               "&code=", Code/binary,
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               GameKey/binary>>,
+    Params = [{appid, GameId},
+              {appuid, PlayerId},
+              {bitaccount, ExchangeAccId},
+              {code, Code},
+              {timestamp, NowMilliSecs}],
+    case do_request(?BIND_ACCOUNT_URL, MD5Bin, Params) of
+        {ok, _} -> ok;
+        Error -> throw(Error)
+    end.
 
 do_request(Url, BinToSign, Params0) ->
     MD5Val = list_to_binary(util:md5(BinToSign)),
