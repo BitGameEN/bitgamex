@@ -126,7 +126,7 @@ CREATE TABLE `user` (
   `session_token` varchar(50) NOT NULL DEFAULT '' COMMENT '会话令牌',
   `lang` varchar(20) NOT NULL DEFAULT '' COMMENT '语言',
   `os_type` varchar(20) NOT NULL DEFAULT '' COMMENT '操作系统类型',
-  `country_code` varchar(32) NOT NULL COMMENT '国家编码',
+  `country_code` varchar(32) NOT NULL DEFAULT '' COMMENT '国家编码',
   `create_time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',
   `last_login_time` int(11) NOT NULL DEFAULT '0' COMMENT '上次登录时间',
   `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '玩家状态（0-正常，1-封禁）',
