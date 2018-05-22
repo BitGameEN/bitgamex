@@ -118,18 +118,23 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
             true ->
                 case usr_user:get_user_gids_by_user_name(UserName) of
                     [] ->
-                        ToCreateUser = #usr_user{user_name = UserName,
-                                                 password = Password,
-                                                 device_id = DeviceId,
-                                                 org_device_id = DeviceId,
-                                                 lang = Lang,
-                                                 os_type = OsType,
-                                                 country_code = util:get_country_code(PeerIp),
-                                                 create_time = Now,
-                                                 time = Now},
-                        Id = usr_user:set_one(ToCreateUser),
-                        usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
-                        Id;
+                        case NewGuest =:= 0 of
+                            true ->
+                                throw({?ERRNO_VERIFY_FAILED, <<"user name and password verify failed">>});
+                            false ->
+                                ToCreateUser = #usr_user{user_name = UserName,
+                                                         password = Password,
+                                                         device_id = DeviceId,
+                                                         org_device_id = DeviceId,
+                                                         lang = Lang,
+                                                         os_type = OsType,
+                                                         country_code = util:get_country_code(PeerIp),
+                                                         create_time = Now,
+                                                         time = Now},
+                                Id = usr_user:set_one(ToCreateUser),
+                                usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                                Id
+                        end;
                     [Id|_] ->
                         Id
                 end;
