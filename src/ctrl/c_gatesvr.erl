@@ -120,7 +120,7 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
                     [] ->
                         case NewGuest =:= 0 of
                             true ->
-                                throw({?ERRNO_VERIFY_FAILED, <<"user name and password verify failed">>});
+                                throw({?ERRNO_VERIFY_FAILED, <<"new_guest = 0, user name does not exist">>});
                             false ->
                                 ToCreateUser = #usr_user{user_name = UserName,
                                                          password = Password,
@@ -136,7 +136,12 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
                                 Id
                         end;
                     [Id|_] ->
-                        Id
+                        case NewGuest =:= 0 of
+                            true ->
+                                Id;
+                            false ->
+                                throw({?ERRNO_VERIFY_FAILED, <<"new_guest = 1, user name does exist">>})
+                        end
                 end;
             false ->
                 Uid
