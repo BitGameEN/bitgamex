@@ -15,4 +15,4 @@
 -define(GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG, 1).
 -define(GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME, 2).
 
--define(SUPPORT_GOLD_TYPES, [<<"BGX">>, <<"BTC">>, <<"ETH">>]).
+-define(SUPPORT_GOLD_TYPES, [<<"BGX">>, <<"BTC">>, <<"ETH">>, <<"ELA">>]).
