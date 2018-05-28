@@ -490,7 +490,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, VerifyCode/binary, TimeBin/binary, GameKey/binary>>,
     MD5Val = util:md5(MD5Bin),
     case Sign =:= list_to_binary(MD5Val) of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
