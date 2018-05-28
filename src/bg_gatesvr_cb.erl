@@ -458,14 +458,14 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
     lock_user(Uid),
     c_gatesvr:api_bind_wallet([User, WalletAddr]);
 
-% https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&time=xx&sign=xx
+% https://api.bitgamex.com/?a=transfer_coin_to_exchange&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&verify_code=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
-    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, time, sign], Req),
-    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, verify_code, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, verify_code := VerifyCode0, time := TimeBin0, sign := Sign0} = ParamsMap,
     ?DBG("transfer_coin_to_exchange: ~p~n", [ParamsMap]),
-    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, TimeBin0, Sign0],
-    [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign] = [util:trim(One) || One <- L],
-    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, TimeBin, Sign]) of
+    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, VerifyCode0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, GoldType, AmountBin, VerifyCode, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, VerifyCode, TimeBin, Sign]) of
         true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
         false -> void
     end,
