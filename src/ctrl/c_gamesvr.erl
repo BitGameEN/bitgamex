@@ -41,7 +41,8 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                                     last_login_ip = ?T2B(PeerIp),
                                     time = Now}),
                         run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = <<"{}">>, time = Now}),
-                        run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId, gold_list = [{Now, ?DEFAULT_GOLD_TYPE, 0.1}], time = Now});
+                        run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId,
+                                                                             gold_list = [{Now, get_gold_type(GameId), 0.01}], time = Now});
                     false -> void
                 end,
                 <<>>;
