@@ -44,7 +44,7 @@ add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0) when is_list(GoldL
                 old_value = OldGoldToDraw,
                 new_value = NewGoldToDraw,
                 drain_type = case get(role_gold_to_draw_drain_type) of undefined -> <<>>; V -> V end,
-                drain_id = case get(role_gold_to_draw_drain_id) of undefined -> 0; V -> V end,
+                drain_id = case get(role_gold_to_draw_drain_id) of undefined -> <<>>; V when is_binary(V) -> V; V -> ?T2B(V) end,
                 drain_count = case get(role_gold_to_draw_drain_count) of undefined -> 0; V -> V end,
                 time = util:unixtime(),
                 call_flow = get_call_flow(get(role_gold_to_draw_drain_type))
@@ -83,7 +83,7 @@ delete_gold_to_draw(PlayerId, GameId, CoinId) ->
                         old_value = OldGoldToDraw,
                         new_value = NewGoldToDraw,
                         drain_type = case get(role_gold_to_draw_drain_type) of undefined -> <<>>; V -> V end,
-                        drain_id = case get(role_gold_to_draw_drain_id) of undefined -> 0; V -> V end,
+                        drain_id = case get(role_gold_to_draw_drain_id) of undefined -> <<>>; V when is_binary(V) -> V; V -> ?T2B(V) end,
                         drain_count = case get(role_gold_to_draw_drain_count) of undefined -> 0; V -> V end,
                         time = util:unixtime(),
                         call_flow = get_call_flow(get(role_gold_to_draw_drain_type))
