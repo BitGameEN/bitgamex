@@ -192,9 +192,9 @@ draw_coin(GameId, UserId, CoinId) ->
         false ->
             throw({-1, <<"the specified coin id was not found">>});
         {_, GoldType, Amount} ->
-            lib_role_gold:put_gold_drain_type_and_drain_id(draw_coin, ?GOLD_TYPE(GoldType), Amount),
+            lib_role_gold:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
-            lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, ?GOLD_TYPE(GoldType), Amount),
+            lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold_to_draw:delete_gold_to_draw(UserId, GameId, CoinId),
             RoleGold = run_role_gold:get_one({GameId, UserId}),
             run_data:trans_commit(),
@@ -215,9 +215,9 @@ consume_coin(GameId, UserId, GoldType, Amount) ->
   try
     run_data:trans_begin(),
 
-    lib_role_gold:put_gold_drain_type_and_drain_id(consume_coin, ?GOLD_TYPE(GoldType), Amount),
+    lib_role_gold:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
     lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount),
-    lib_game:put_gold_drain_type_and_drain_id(consume_coin, ?GOLD_TYPE(GoldType), Amount),
+    lib_game:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
     lib_game:add_reclaimed_gold(GameId, GoldType, Amount),
     RoleGold = run_role_gold:get_one({GameId, UserId}),
     run_data:trans_commit(),
