@@ -9,7 +9,15 @@
 -include("record_cfg_gold_type.hrl").
 
 get_ids() ->
-	[<<"BGX">>,<<"BTC">>,<<"ELA">>,<<"ETH">>,<<"PLY">>].
+	[<<"ACT">>,<<"BGX">>,<<"BTC">>,<<"ELA">>,<<"ETH">>,<<"MAN">>,<<"PLY">>].
+
+get(<<"ACT">>) ->
+	#gold_type{
+		gold_type = <<"ACT"/utf8>>,
+		mining_start_time = 1525017600,
+		mining_output_first_day = 100.0,
+		half_life_days = 730
+	};
 
 get(<<"BGX">>) ->
 	#gold_type{
@@ -23,7 +31,7 @@ get(<<"BTC">>) ->
 	#gold_type{
 		gold_type = <<"BTC"/utf8>>,
 		mining_start_time = 1525017600,
-		mining_output_first_day = 1.0e4,
+		mining_output_first_day = 100.0,
 		half_life_days = 730
 	};
 
@@ -39,7 +47,15 @@ get(<<"ETH">>) ->
 	#gold_type{
 		gold_type = <<"ETH"/utf8>>,
 		mining_start_time = 1525017600,
-		mining_output_first_day = 1.0e5,
+		mining_output_first_day = 100.0,
+		half_life_days = 730
+	};
+
+get(<<"MAN">>) ->
+	#gold_type{
+		gold_type = <<"MAN"/utf8>>,
+		mining_start_time = 1525017600,
+		mining_output_first_day = 100.0,
 		half_life_days = 730
 	};
 
