@@ -185,12 +185,15 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
                                                       {_, 0} -> % 成功
                                                           {_, Data} = lists:keyfind(<<"data">>, 1, JsonObject),
                                                           OkCallback(Data);
-                                                      {_, ErrCode} -> % 失败
+                                                      {_, ErrNo} -> % 失败
                                                           {_, ErrMsg} = lists:keyfind(<<"message">>, 1, JsonObject),
-                                                          {ErrCode, ErrMsg}
+                                                          lib_role_gold:add_gold(UserId, GameId, GoldType, Amount0), % 返回游戏币
+                                                          lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
+                                                          {ErrNo, ErrMsg}
                                                   end
                                               end);
-                _ -> lib_role_gold:add_gold(UserId, GameId, GoldType, Amount0) % 返回游戏币
+                _ ->
+                    lib_role_gold:add_gold(UserId, GameId, GoldType, Amount0) % 返回游戏币
             end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
             throw(Error)
