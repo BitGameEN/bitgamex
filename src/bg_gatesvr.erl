@@ -25,7 +25,7 @@ init([Port]) ->
         {certfile, "../priv/ssl/server.crt"},
         {keyfile, "../priv/ssl/server.key"}
     ], #{env => #{dispatch => Dispatch}}),
-    {ok, _} = cowboy:start_clear(http_listener, 100, [{port, Port}], #{env => #{dispatch => Dispatch}}),
+    %{ok, _} = cowboy:start_clear(http_listener, 100, [{port, Port}], #{env => #{dispatch => Dispatch}}),
 
     {ok, true}.
 
