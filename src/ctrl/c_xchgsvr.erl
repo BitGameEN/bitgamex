@@ -31,7 +31,7 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, Recei
     #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
     lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
-    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0),
+    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0), % 先扣除
     TransactionId = lib_user_gold_transfer:gen_uuid(),
     NowDateTime = util:now_datetime_str(),
     TransferR = #usr_gold_transfer{
@@ -54,6 +54,7 @@ transfer_gold(TransferType, GameId, UserId, GoldType, Amount0, WalletAddr, Recei
     TransferDiscountToXchg = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG),
     %% todo：临时为了客户端调试注释掉，以后改回来
     %Amount = Amount0 * (1 - TransferDiscountToXchg),
+    %true = Amount > 0, % 相当于断言
     %% 参数串：
     %% 发送到交易所：transaction_id=xx&game_uid=xx&exchange_accid=xx&token_symbol=xx&amount=xx&time=xx
     %% 发送到钱包：transaction_id=xx&game_uid=xx&exchange_accid=xx&wallet_address=xx&token_symbol=xx&amount=xx&time=xx

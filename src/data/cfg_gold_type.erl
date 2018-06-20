@@ -16,7 +16,8 @@ get(<<"ACT">>) ->
 		gold_type = <<"ACT"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"act"/utf8>>
 	};
 
 get(<<"BGX">>) ->
@@ -24,7 +25,8 @@ get(<<"BGX">>) ->
 		gold_type = <<"BGX"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 1027397.26,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"eth"/utf8>>
 	};
 
 get(<<"BTC">>) ->
@@ -32,7 +34,8 @@ get(<<"BTC">>) ->
 		gold_type = <<"BTC"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"btc"/utf8>>
 	};
 
 get(<<"ELA">>) ->
@@ -40,7 +43,8 @@ get(<<"ELA">>) ->
 		gold_type = <<"ELA"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"ela"/utf8>>
 	};
 
 get(<<"ETH">>) ->
@@ -48,7 +52,8 @@ get(<<"ETH">>) ->
 		gold_type = <<"ETH"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"eth"/utf8>>
 	};
 
 get(<<"MAN">>) ->
@@ -56,7 +61,8 @@ get(<<"MAN">>) ->
 		gold_type = <<"MAN"/utf8>>,
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"eth"/utf8>>
 	};
 
 get(<<"PLY">>) ->
@@ -64,7 +70,8 @@ get(<<"PLY">>) ->
 		gold_type = <<"PLY"/utf8>>,
 		mining_start_time = 1528092516,
 		mining_output_first_day = 1.0e5,
-		half_life_days = 730
+		half_life_days = 730,
+		chain_type = <<"eth"/utf8>>
 	};
 
 get(_) ->

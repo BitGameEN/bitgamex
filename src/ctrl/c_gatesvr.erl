@@ -336,8 +336,8 @@ api_bind_wallet([User, WalletAddr]) ->
     {ok, #{wallet_addr => WalletAddr}}.
 
 %% 转账游戏币给绑定的交易所账号的接口
-api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, ReceiptData]) ->
-    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_exchange, [GameId, UserId, GoldType, Amount, ReceiptData]),
+api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, GoldType, Amount, ReceiptData, VerifyCode]) ->
+    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, transfer_gold_to_exchange, [GameId, GameKey, UserId, GoldType, Amount, ReceiptData, VerifyCode]),
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 
 %% 转账游戏币给绑定的钱包的接口

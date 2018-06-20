@@ -6,16 +6,24 @@
 
 -export([check_account/3,
          send_verify_code/5,
-         bind_exchange_accid/5]).
+         bind_exchange_accid/5,
+         transfer_gold_to_exchange/7]).
 
 -include("common.hrl").
+-include("gameConfig.hrl").
+-include("gameConfigGlobalKey.hrl").
+-include("record_cfg_gold_type.hrl").
+-include("record_run_role_gold.hrl").
 -include("record_usr_user.hrl").
+-include("record_usr_gold_transfer.hrl").
 
 %-define(URL_PREFIX, "https://open.bitgamex.org/api/").
 -define(URL_PREFIX, "http://127.0.0.1:8081/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
 -define(SEND_VERIFY_CODE_URL, ?URL_PREFIX ++ "sendverifycode").
 -define(BIND_ACCOUNT_URL, ?URL_PREFIX ++ "bindaccount").
+-define(TRANSFER_TO_XCHG_URL, ?URL_PREFIX ++ "exchange").
+-define(TRANSFER_TO_WALLET_URL, "").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
@@ -76,6 +84,114 @@ bind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, VerifyCode) ->
     case do_request(?BIND_ACCOUNT_URL, MD5Bin, Params) of
         {ok, _} -> ok;
         Error -> throw(Error)
+    end.
+
+%% https://github.com/BitGameEN/OpenAPI/blob/master/%E6%8F%90%E5%8F%96%E4%BB%A3%E5%B8%81.md
+transfer_gold_to_exchange(GameId, GameKey, UserId, GoldType, Amount, ReceiptData, VerifyCode) ->
+    transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, GameKey, UserId, GoldType, Amount, <<>>, ReceiptData, VerifyCode).
+
+transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAddr, ReceiptData, VerifyCode) ->
+    #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
+    TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
+    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
+    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0), % 先扣除
+    TransactionId = lib_user_gold_transfer:gen_uuid(),
+    NowDateTime = util:now_datetime_str(),
+    TransferR = #usr_gold_transfer{
+                    type = TransferType,
+                    transaction_type = TransactionType,
+                    transaction_id = TransactionId,
+                    receipt = ReceiptData,
+                    player_id = UserId,
+                    device_id = DeviceId,
+                    xchg_accid = BindXchgAccId,
+                    wallet_addr = WalletAddr,
+                    gold_type = GoldType,
+                    gold = Amount0,
+                    status = 0,
+                    error_tag = <<>>,
+                    receive_game_id = GameId,
+                    receive_time = NowDateTime,
+                    update_time = NowDateTime},
+    usr_gold_transfer:set_one(TransferR),
+    TransferDiscountToXchg = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG),
+    Amount = Amount0 * (1 - TransferDiscountToXchg),
+    true = Amount > 0, % 相当于断言
+
+    % 参数串：
+    % 发送到交易所：amount=xx&appid=xx&apporderno=xx&appuid=xx&bitaccount=xx&chainname=xx&code=xx&paramdata=xx&timestamp=xx&tokensymbol=xx&uid=xx
+    Chain = case cfg_gold_type:get(GoldType) of
+                null -> <<>>;
+                #gold_type{chain_type = CT} -> CT
+            end,
+    GoldTypeLower = list_to_binary(string:to_lower(binary_to_list(GoldType))),
+    UserIdBin = integer_to_binary(UserId),
+    AmountBin = util:f2s(Amount),
+    NowMilliSecs = util:longunixtime(),
+    MD5Bin = <<"amount=", AmountBin/binary,
+               "&appid=", (integer_to_binary(GameId))/binary,
+               "&apporderno=", TransactionId/binary,
+               "&appuid=", UserIdBin/binary,
+               "&bitaccount=", BindXchgAccId/binary,
+               "&chainname=", Chain/binary,
+               "&code=", VerifyCode/binary,
+               "&paramdata=",
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               "&tokensymbol=", GoldTypeLower/binary,
+               "&uid=", UserIdBin/binary,
+               GameKey/binary>>,
+    Params = [{amount, AmountBin},
+              {appid, GameId},
+              {apporderno, TransactionId},
+              {appuid, UserId},
+              {bitaccount, BindXchgAccId},
+              {chainname, Chain},
+              {code, VerifyCode},
+              {paramdata, <<>>},
+              {timestamp, NowMilliSecs},
+              {tokensymbol, GoldTypeLower},
+              {uid, UserId}],
+
+    % 发送，并处理结果
+    OkCallback =
+        fun(Data) ->
+            Balance =
+                case lists:keyfind(<<"balance">>, 1, Data) of
+                    {_, Balance_} -> Balance_;
+                    false -> -1
+                end,
+            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, Amount0}),
+            lib_game:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
+            lib_game:add_reclaimed_gold(GameId, GoldType, Amount0 * TransferDiscountToXchg),
+            RoleGold = run_role_gold:get_one({GameId, UserId}),
+            {ok, RoleGold#run_role_gold.gold, Balance}
+        end,
+    Url = case TransferType of
+              ?GOLD_TRANSFER_TYPE_GAME_TO_XCHG -> ?TRANSFER_TO_XCHG_URL;
+              ?GOLD_TRANSFER_TYPE_GAME_TO_WALLET -> ?TRANSFER_TO_WALLET_URL
+          end,
+    case catch do_request(Url, MD5Bin, Params) of
+        {ok, Data} ->
+            OkCallback(Data);
+        {ErrNo, ErrMsg} = Error ->
+            case ErrNo of
+                ?ERRNO_HTTP_REQ_TIMEOUT ->
+                    % 超时情况下不能确认是否已经发到对端并处理完成，所以不能返回游戏币
+                    httpc_proxy:queue_request(Url, post, Params,
+                                              fun(JsonObject) ->
+                                                  case lists:keyfind(<<"code">>, 1, JsonObject) of
+                                                      {_, 0} -> % 成功
+                                                          {_, Data} = lists:keyfind(<<"data">>, 1, JsonObject),
+                                                          OkCallback(Data);
+                                                      {_, ErrCode} -> % 失败
+                                                          {_, ErrMsg} = lists:keyfind(<<"message">>, 1, JsonObject),
+                                                          {ErrCode, ErrMsg}
+                                                  end
+                                              end);
+                _ -> lib_role_gold:add_gold(UserId, GameId, GoldType, Amount0) % 返回游戏币
+            end,
+            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
+            throw(Error)
     end.
 
 do_request(Url, BinToSign, Params0) ->

@@ -301,7 +301,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
         false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
         true -> void
     end,
-    case Amount < 0.00000001 of
+    case Amount < 0.001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
     end,
@@ -477,7 +477,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
         true -> void
     end,
-    case Amount < 0.00000001 of
+    case Amount < 0.001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
     end,
@@ -506,7 +506,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         _ -> void
     end,
     lock_user(Uid),
-    c_gatesvr:api_transfer_coin_to_exchange([User, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+    c_gatesvr:api_transfer_coin_to_exchange([User, GameKey, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{})), VerifyCode]);
 
 % https://api.bitgamex.com/?a=transfer_coin_to_wallet&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&wallet_addr=xx&time=xx&sign=xx
 action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
@@ -527,7 +527,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
         true -> void
     end,
-    case Amount < 0.00000001 of
+    case Amount < 0.001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
     end,
@@ -660,7 +660,7 @@ action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
         false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
         true -> void
     end,
-    case Amount < 0.00000001 of
+    case Amount < 0.001 of
         true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
         false -> void
     end,
