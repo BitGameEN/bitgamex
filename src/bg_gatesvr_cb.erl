@@ -685,7 +685,7 @@ action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
         true -> void
     end,
     lock_user(Uid),
-    c_gatesvr:api_consume_coin([User, GoldType, Amount]);
+    c_gatesvr:api_consume_coin([User, GameKey, GoldType, Amount]);
 
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).

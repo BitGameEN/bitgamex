@@ -126,12 +126,16 @@ handle_info({rpc_server_add, Id, Node, Ip, Port, Type}, State) ->
                     skip
             end;
         ?SVRTYPE_XCHG ->
-            case State#state.type =:= ?SVRTYPE_GATE of
-                true ->
+            case State#state.type of
+                ?SVRTYPE_GATE ->
                     ?INFO("xchgsvr added: id=~p, node=~p, ip=~p, port=~p, type=~p", [Id, Node, Ip, Port, Type]),
                     erlang:monitor_node(Node, true),
                     ets:insert(?ETS_XCHGSVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type});
-                false ->
+                ?SVRTYPE_GAME ->
+                    ?INFO("xchgsvr added: id=~p, node=~p, ip=~p, port=~p, type=~p", [Id, Node, Ip, Port, Type]),
+                    erlang:monitor_node(Node, true),
+                    ets:insert(?ETS_XCHGSVR, #server{id = Id, node = Node, ip = Ip, port = Port, type = Type});
+                _ ->
                     skip
             end;
         _ ->

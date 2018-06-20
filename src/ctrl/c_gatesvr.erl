@@ -356,7 +356,7 @@ api_draw_coin([#usr_user{current_game_id = GameId, id = UserId} = User, CoinId])
     {ok, #{role_balance => RoleGold}}.
 
 %% 消耗游戏币的接口
-api_consume_coin([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount]) ->
-    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, consume_coin, [GameId, UserId, GoldType, Amount]),
+api_consume_coin([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, GoldType, Amount]) ->
+    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, consume_coin, [GameId, GameKey, UserId, GoldType, Amount]),
     {ok, #{role_balance => RoleGold}}.
 

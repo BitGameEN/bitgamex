@@ -8,7 +8,7 @@
          transfer_coin_in_game/6,
          get_coin_list_to_draw/2,
          draw_coin/3,
-         consume_coin/4]).
+         consume_coin/5]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -212,7 +212,7 @@ draw_coin(GameId, UserId, CoinId) ->
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
-consume_coin(GameId, UserId, GoldType, Amount) ->
+consume_coin(GameId, GameKey, UserId, GoldType, Amount) ->
   try
     run_data:trans_begin(),
 
@@ -221,6 +221,7 @@ consume_coin(GameId, UserId, GoldType, Amount) ->
     lib_game:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
     lib_game:add_reclaimed_gold(GameId, GoldType, Amount),
     RoleGold = run_role_gold:get_one({GameId, UserId}),
+    ok = lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, consume_gold, [GameId, GameKey, UserId, GoldType, Amount]),
     run_data:trans_commit(),
     {ok, RoleGold#run_role_gold.gold}
 

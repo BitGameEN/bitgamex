@@ -7,7 +7,8 @@
 -export([check_account/3,
          send_verify_code/5,
          bind_exchange_accid/5,
-         transfer_gold_to_exchange/7]).
+         transfer_gold_to_exchange/7,
+         consume_gold/5]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -24,6 +25,7 @@
 -define(BIND_ACCOUNT_URL, ?URL_PREFIX ++ "bindaccount").
 -define(TRANSFER_TO_XCHG_URL, ?URL_PREFIX ++ "exchange").
 -define(TRANSFER_TO_WALLET_URL, "").
+-define(CONSUME_GOLD_URL, ?URL_PREFIX ++ "usetoken").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
@@ -192,6 +194,32 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
             end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
             throw(Error)
+    end.
+
+%% https://github.com/BitGameEN/OpenAPI/blob/master/%E7%94%A8%E6%88%B7%E6%B6%88%E8%80%97%E4%BB%A3%E5%B8%81.md
+consume_gold(GameId, GameKey, PlayerId, GoldType, Amount) ->
+    AmountBin = util:f2s(Amount),
+    NowMilliSecs = util:longunixtime(),
+    GoldTypeLower = list_to_binary(string:to_lower(binary_to_list(GoldType))),
+    UserIdBin = integer_to_binary(PlayerId),
+    MD5Bin = <<"amount=", AmountBin/binary,
+               "&appid=", (integer_to_binary(GameId))/binary,
+               "&appuid=", UserIdBin/binary,
+               "&paramdata=",
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               "&tokensymbol=", GoldTypeLower/binary,
+               "&uid=", UserIdBin/binary,
+               GameKey/binary>>,
+    Params = [{amount, AmountBin},
+              {appid, GameId},
+              {appuid, PlayerId},
+              {paramdata, <<>>},
+              {timestamp, NowMilliSecs},
+              {tokensymbol, GoldTypeLower},
+              {uid, PlayerId}],
+    case do_request(?CONSUME_GOLD_URL, MD5Bin, Params) of
+        {ok, _} -> ok;
+        Error -> throw(Error)
     end.
 
 do_request(Url, BinToSign, Params0) ->
