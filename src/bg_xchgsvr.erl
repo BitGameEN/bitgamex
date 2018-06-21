@@ -15,22 +15,23 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    Port =
-        case application:get_env(xchgsvr, xchg_http_port) of
-            {ok, P} -> P;
-            undefined -> ?DEFAULT_EXCHANGE_PORT
-        end,
-    Dispatch = cowboy_router:compile([{'_', [
-            {"/", bg_xchgsvr_cb, []}
-        ]}
-    ]),
-
-    {ok, _} = cowboy:start_tls(https_listener, 100, [
-        {port, Port},
-        {cacertfile, "../priv/ssl/bitgame-ca.crt"},
-        {certfile, "../priv/ssl/server.crt"},
-        {keyfile, "../priv/ssl/server.key"}
-    ], #{env => #{dispatch => Dispatch}}),
+    % 说明：从交易所充值到游戏的实现方式，改成直接从游戏中发起，从而不再需要提供http服务给交易所了
+    %Port =
+    %    case application:get_env(xchgsvr, xchg_http_port) of
+    %        {ok, P} -> P;
+    %        undefined -> ?DEFAULT_EXCHANGE_PORT
+    %    end,
+    %Dispatch = cowboy_router:compile([{'_', [
+    %        {"/", bg_xchgsvr_cb, []}
+    %    ]}
+    %]),
+    %
+    %{ok, _} = cowboy:start_tls(https_listener, 100, [
+    %    {port, Port},
+    %    {cacertfile, "../priv/ssl/bitgame-ca.crt"},
+    %    {certfile, "../priv/ssl/server.crt"},
+    %    {keyfile, "../priv/ssl/server.key"}
+    %], #{env => #{dispatch => Dispatch}}),
 
     {ok, true}.
 
