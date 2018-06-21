@@ -12,7 +12,7 @@ get_one(Game_id = Id) ->
 		{true, _Cas, Val} ->
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_USR, <<"select game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type from game where game_id=?">>, [Game_id]) of
+			case db_esql:get_row(?DB_USR, <<"select game_id,game_hashid,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type from game where game_id=?">>, [Game_id]) of
 				[] -> [];
 				Row ->
 					R = build_record_from_row(Row),
@@ -46,6 +46,7 @@ set_one(R0) when is_record(R0, usr_game) ->
 		true ->
 			#usr_game{
 				game_id = Game_id,
+				game_hashid = Game_hashid,
 				game_name = Game_name,
 				open_status = Open_status,
 				game_key = Game_key,
@@ -59,8 +60,8 @@ set_one(R0) when is_record(R0, usr_game) ->
 				token_symbol_list = Token_symbol_list,
 				game_type = Game_type
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(~p,'~s',~p,'~s','~s',~p,'~s',~p,'~s',~p,'~s','~s',~p); select last_insert_id()">>,
-				[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, ?T2B(Mining_rule), Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type])),
+			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into game(game_id,game_hashid,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(~p,'~s','~s',~p,'~s','~s',~p,'~s',~p,'~s',~p,'~s','~s',~p); select last_insert_id()">>,
+				[Game_id, Game_hashid, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, ?T2B(Mining_rule), Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type])),
 			R = R0#usr_game{key_id = Insert_id, game_id = Insert_id},
 			cache:set(cache_key(R#usr_game.key_id), R),
 			R#usr_game.key_id
@@ -88,6 +89,7 @@ clean_all_cache(N) ->
 syncdb(R) when is_record(R, usr_game) ->
 	#usr_game{
 		game_id = Game_id,
+		game_hashid = Game_hashid,
 		game_name = Game_name,
 		open_status = Open_status,
 		game_key = Game_key,
@@ -101,13 +103,14 @@ syncdb(R) when is_record(R, usr_game) ->
 		token_symbol_list = Token_symbol_list,
 		game_type = Game_type
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(?,?,?,?,?,?,?,?,?,?,?,?,?)">>,
-		[Game_id, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, ?T2B(Mining_rule), Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type]).
+	db_esql:execute(?DB_USR, <<"replace into game(game_id,game_hashid,game_name,open_status,game_key,balance_lua_f,hard_coef,mining_rule,trusteeship_exuserid,cp_name,cp_exuserid,ip_list,token_symbol_list,game_type) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)">>,
+		[Game_id, Game_hashid, util:esc(Game_name), Open_status, Game_key, Balance_lua_f, Hard_coef, ?T2B(Mining_rule), Trusteeship_exuserid, util:esc(Cp_name), Cp_exuserid, Ip_list, Token_symbol_list, Game_type]).
 
-build_record_from_row([Game_id, Game_name, Open_status, Game_key, Balance_lua_f, Hard_coef, Mining_rule, Trusteeship_exuserid, Cp_name, Cp_exuserid, Ip_list, Token_symbol_list, Game_type]) ->
+build_record_from_row([Game_id, Game_hashid, Game_name, Open_status, Game_key, Balance_lua_f, Hard_coef, Mining_rule, Trusteeship_exuserid, Cp_name, Cp_exuserid, Ip_list, Token_symbol_list, Game_type]) ->
 	#usr_game{
 		key_id = Game_id,
 		game_id = Game_id,
+		game_hashid = Game_hashid,
 		game_name = Game_name,
 		open_status = Open_status,
 		game_key = Game_key,

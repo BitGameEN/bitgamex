@@ -6,6 +6,7 @@
 -record(usr_user, {
 		key_id,
 		id = 0, % 用户id（玩家id）
+		hash_id = <<"">>, % 用户哈希id
 		user_name = <<"">>, % 用户名
 		password = <<"">>, % 登录密码
 		player_name = <<"">>, % 玩家名

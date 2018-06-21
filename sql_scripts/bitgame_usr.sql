@@ -23,6 +23,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `game`;
 CREATE TABLE `game` (
   `game_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '游戏id',
+  `game_hashid` varchar(40) NOT NULL DEFAULT '' COMMENT '游戏的哈希id',
   `game_name` varchar(100) NOT NULL DEFAULT '' COMMENT '游戏名',
   `open_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '游戏状态，0-close, 1-open',
   `game_key` varchar(50) NOT NULL DEFAULT '' COMMENT '游戏固定key，用于登录校验',
@@ -111,6 +112,7 @@ CREATE TABLE `server` (
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '用户id（玩家id）',
+  `hash_id` varchar(40) NOT NULL DEFAULT '' COMMENT '用户哈希id',
   `user_name` varchar(50) NOT NULL DEFAULT '' COMMENT '用户名',
   `password` varchar(50) NOT NULL DEFAULT '' COMMENT '登录密码',
   `player_name` varchar(50) NOT NULL DEFAULT '' COMMENT '玩家名',
@@ -144,7 +146,8 @@ CREATE TABLE `user` (
   KEY `ios_gamecenter_id` (`ios_gamecenter_id`) USING BTREE,
   KEY `google_id` (`google_id`) USING BTREE,
   KEY `facebook_id` (`facebook_id`) USING BTREE,
-  KEY `user_name` (`user_name`) USING BTREE
+  KEY `user_name` (`user_name`) USING BTREE,
+  KEY `hash_id` (`hash_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏中心账户';
 
 -- ----------------------------
