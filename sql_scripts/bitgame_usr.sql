@@ -45,7 +45,7 @@ CREATE TABLE `game` (
 -- ----------------------------
 DROP TABLE IF EXISTS `game_reclaimed_gold`;
 CREATE TABLE `game_reclaimed_gold` (
-  `game_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '游戏id',
+  `game_id` int(11) NOT NULL COMMENT '游戏id',
   `gold` text NOT NULL COMMENT '游戏回收的总金币数，json格式：{"BGX":数量, "BTC":数量, "ETH":数量, ...}',
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '时间戳',
   PRIMARY KEY (`game_id`)
