@@ -8,6 +8,7 @@
          send_verify_code/5,
          bind_exchange_accid/5,
          transfer_gold_to_exchange/7,
+         recharge_gold_to_game/7,
          consume_gold/5]).
 
 -include("common.hrl").
@@ -26,6 +27,7 @@
 -define(TRANSFER_TO_XCHG_URL, ?URL_PREFIX ++ "exchange").
 -define(TRANSFER_TO_WALLET_URL, "").
 -define(CONSUME_GOLD_URL, ?URL_PREFIX ++ "usetoken").
+-define(RECHARGE_TO_GAME_URL, ?URL_PREFIX ++ "recharge").
 
 -define(JSON_CONTENT, {"Content-Type", "application/json; charset=utf8"}).
 
@@ -194,6 +196,108 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
                                               end);
                 _ ->
                     lib_role_gold:add_gold(UserId, GameId, GoldType, Amount0) % 返回游戏币
+            end,
+            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
+            throw(Error)
+    end.
+
+recharge_gold_to_game(GameId, GameKey, UserId, GoldType, Amount, ReceiptData, VerifyCode) ->
+    #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
+    TransferType = ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME,
+    TransactionType = ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME,
+    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount),
+    TransactionId = lib_user_gold_transfer:gen_uuid(),
+    NowDateTime = util:now_datetime_str(),
+    TransferR = #usr_gold_transfer{
+                    type = TransferType,
+                    transaction_type = TransactionType,
+                    transaction_id = TransactionId,
+                    receipt = ReceiptData,
+                    player_id = UserId,
+                    device_id = DeviceId,
+                    xchg_accid = BindXchgAccId,
+                    wallet_addr = <<>>,
+                    gold_type = GoldType,
+                    gold = Amount,
+                    status = 0,
+                    error_tag = <<>>,
+                    receive_game_id = GameId,
+                    receive_time = NowDateTime,
+                    update_time = NowDateTime},
+    usr_gold_transfer:set_one(TransferR),
+
+    % 参数串：
+    % 发送到交易所：amount=xx&appid=xx&apporderno=xx&appuid=xx&bitaccount=xx&chainname=xx&code=xx&paramdata=xx&timestamp=xx&tokensymbol=xx&uid=xx
+    Chain = case cfg_gold_type:get(GoldType) of
+                null -> <<>>;
+                #gold_type{chain_type = CT} -> CT
+            end,
+    GoldTypeLower = list_to_binary(string:to_lower(binary_to_list(GoldType))),
+    UserIdBin = integer_to_binary(UserId),
+    AmountBin = util:f2s(Amount),
+    NowMilliSecs = util:longunixtime(),
+    MD5Bin = <<"amount=", AmountBin/binary,
+               "&appid=", (integer_to_binary(GameId))/binary,
+               "&apporderno=", TransactionId/binary,
+               "&appuid=", UserIdBin/binary,
+               "&bitaccount=", BindXchgAccId/binary,
+               "&chainname=", Chain/binary,
+               "&code=", VerifyCode/binary,
+               "&paramdata=",
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               "&tokensymbol=", GoldTypeLower/binary,
+               "&uid=", UserIdBin/binary,
+               GameKey/binary>>,
+    Params = [{amount, AmountBin},
+              {appid, GameId},
+              {apporderno, TransactionId},
+              {appuid, UserId},
+              {bitaccount, BindXchgAccId},
+              {chainname, Chain},
+              {code, VerifyCode},
+              {paramdata, <<>>},
+              {timestamp, NowMilliSecs},
+              {tokensymbol, GoldTypeLower},
+              {uid, UserId}],
+
+    % 发送，并处理结果
+    OkCallback =
+        fun(Data) ->
+            Balance =
+                case lists:keyfind(<<"balance">>, 1, Data) of
+                    {_, Balance_} -> Balance_;
+                    false -> -1
+                end,
+            % 加金币
+            lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount),
+            lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
+            % 更新transfer记录
+            lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, Amount}),
+            RoleGold = run_role_gold:get_one({GameId, UserId}),
+            {ok, RoleGold#run_role_gold.gold, Balance}
+        end,
+    Url = ?RECHARGE_TO_GAME_URL,
+    case catch do_request(Url, MD5Bin, Params) of
+        {ok, Data} ->
+            OkCallback(Data);
+        {ErrNo, ErrMsg} = Error ->
+            case ErrNo of
+                ?ERRNO_HTTP_REQ_TIMEOUT ->
+                    % 超时情况下不能确认是否已经发到对端并处理完成
+                    httpc_proxy:queue_request(Url, post, Params,
+                                              fun(JsonObject) ->
+                                                  case lists:keyfind(<<"code">>, 1, JsonObject) of
+                                                      {_, 0} -> % 成功
+                                                          {_, Data} = lists:keyfind(<<"data">>, 1, JsonObject),
+                                                          OkCallback(Data);
+                                                      {_, ErrNo} -> % 失败
+                                                          {_, ErrMsg} = lists:keyfind(<<"message">>, 1, JsonObject),
+                                                          lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
+                                                          {ErrNo, ErrMsg}
+                                                  end
+                                              end);
+                _ ->
+                    void
             end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {error, ErrNo, ErrMsg}),
             throw(Error)

@@ -23,7 +23,7 @@ init(Req, Opts) ->
             throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
                 cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
             _:ExceptionErr ->
-                ?ERR("bg_gatesvr_cb exception:~nerr_msg=~p~nstack=~p~n", [ExceptionErr, erlang:get_stacktrace()]),
+                ?ERR("bg_gatesvr_cb exception(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, ExceptionErr, erlang:get_stacktrace()]),
                 cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
         after
             unlock_user()
@@ -572,6 +572,57 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         end,
     lock_user(Uid),
     c_gatesvr:api_transfer_coin_to_wallet([User, GoldType, Amount, FinalWalletAddr, iolist_to_binary(cowboy_req:uri(Req, #{}))]);
+
+% https://api.bitgamex.com/?a=recharge_coin_to_game&uid=xx&game_id=xx&token=xx&coin_type=xx&amount=xx&verify_code=xx&time=xx&sign=xx
+action(<<"GET">>, <<"recharge_coin_to_game">> = Action, Req) ->
+    ParamsMap = cowboy_req:match_qs([uid, game_id, token, coin_type, amount, verify_code, time, sign], Req),
+    #{uid := UidBin0, game_id := GameIdBin0, token := Token0, coin_type := GoldType0, amount := AmountBin0, verify_code := VerifyCode0, time := TimeBin0, sign := Sign0} = ParamsMap,
+    ?DBG("recharge_coin_to_game: ~p~n", [ParamsMap]),
+    L = [UidBin0, GameIdBin0, Token0, GoldType0, AmountBin0, VerifyCode0, TimeBin0, Sign0],
+    [UidBin, GameIdBin, Token, GoldType, AmountBin, VerifyCode, TimeBin, Sign] = [util:trim(One) || One <- L],
+    case lists:member(<<>>, [UidBin, GameIdBin, Token, GoldType, AmountBin, VerifyCode, TimeBin, Sign]) of
+        true -> throw({200, ?ERRNO_MISSING_PARAM, <<"Missing parameter">>});
+        false -> void
+    end,
+    Uid = binary_to_integer(UidBin),
+    GameId = binary_to_integer(GameIdBin),
+    Amount = util:binary_to_float(AmountBin),
+    %Time = binary_to_integer(TimeBin),
+    GoldTypes = lib_mining:get_gold_types(GameId),
+    case lists:member(binary_to_atom(GoldType, utf8), GoldTypes) of
+        false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
+        true -> void
+    end,
+    case Amount < 0.001 of
+        true -> throw({?ERRNO_WRONG_PARAM, <<"wrong amount">>});
+        false -> void
+    end,
+    GameKey =
+        case usr_game:get_one(GameId) of
+            #usr_game{open_status = OpenStatus, game_key = GKey} ->
+                case OpenStatus =:= 0 of
+                    true -> throw({?ERRNO_GAME_NOT_OPEN, <<"game not open">>});
+                    false -> GKey
+                end;
+            _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
+        end,
+    MD5Bin = <<UidBin/binary, GameIdBin/binary, Token/binary, GoldType/binary, AmountBin/binary, VerifyCode/binary, TimeBin/binary, GameKey/binary>>,
+    MD5Val = util:md5(MD5Bin),
+    case Sign =:= list_to_binary(MD5Val) of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
+        true -> void
+    end,
+    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso TheToken =:= Token of
+        false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
+        true -> void
+    end,
+    case BindXchgAccId of
+        <<>> -> throw({-1, <<"no exchange account id bound">>});
+        _ -> void
+    end,
+    lock_user(Uid),
+    c_gatesvr:api_recharge_coin_to_game([User, GameKey, GoldType, Amount, iolist_to_binary(cowboy_req:uri(Req, #{})), VerifyCode]);
 
 % https://api.bitgamex.com/?a=get_coin_list_to_draw&uid=xx&game_id=xx&token=xx
 action(<<"GET">>, <<"get_coin_list_to_draw">> = Action, Req) ->

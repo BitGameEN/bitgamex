@@ -5,7 +5,7 @@
 -module(lib_mining).
 -export([distribute_game_delta_golds/2, distribute_login_delta_golds/3]).
 -export([clear_cache_power_list/0]).
--export([get_gold_type/1]).
+-export([get_rand_gold_type/1, get_gold_types/1]).
 
 -include("common.hrl").
 -include("gameConfig.hrl").
@@ -58,7 +58,7 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
 -define(TWO_DAY_SECONDS, 2 * 24 * 3600).
 distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
     DurationSeconds = util:clamp(1, ?TWO_DAY_SECONDS, DurationSeconds0),
-    TheGT = get_gold_type(GameId),
+    TheGT = get_rand_gold_type(GameId),
     % 因为power总值在持续增长，使用当前的power总值，一定不会超发
     PowerSum = lists:sum([P || {_, P} <- get_power_list()]),
     Role = run_role:get_one({GameId, PlayerId}),
@@ -109,14 +109,22 @@ clear_cache_power_list() ->
     end,
     ok.
 
-get_gold_type(GameId) ->
+get_rand_gold_type(GameId) ->
     case usr_game:get_one(GameId) of
         #usr_game{mining_rule = MiningRule} ->
             % rule格式：[{'BGX', 30}, {'BTC', 10}, {'ETH', 10}, {'ELA', 50}]
             {GoldTypeList, WeightList} = lists:unzip(MiningRule),
             I = util:rand_list_index(WeightList),
             list_to_binary(atom_to_list(lists:nth(I, GoldTypeList)));
-        _ ->
-            ?DEFAULT_GOLD_TYPE
+        _ -> ?DEFAULT_GOLD_TYPE
+    end.
+
+get_gold_types(GameId) ->
+    case usr_game:get_one(GameId) of
+        #usr_game{mining_rule = MiningRule} ->
+            % rule格式：[{'BGX', 30}, {'BTC', 10}, {'ETH', 10}, {'ELA', 50}]
+            {GoldTypeList, _} = lists:unzip(MiningRule),
+            GoldTypeList;
+        _ -> []
     end.
 

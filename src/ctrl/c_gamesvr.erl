@@ -42,7 +42,7 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                                     time = Now}),
                         run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = <<"{}">>, time = Now}),
                         run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId,
-                                                                             gold_list = [{Now, lib_mining:get_gold_type(GameId), 0.01}], time = Now});
+                                                                             gold_list = [{Now, lib_mining:get_rand_gold_type(GameId), 0.01}], time = Now});
                     false -> void
                 end,
                 <<>>;
@@ -103,7 +103,7 @@ save_game_data(GameId, UserId, GameData) ->
                 LuaState0 = luerl:init(),
                 {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
-                {lib_mining:get_gold_type(GameId), V}
+                {lib_mining:get_rand_gold_type(GameId), V}
         end,
 
     case DeltaGold > 0 of

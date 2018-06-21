@@ -121,6 +121,7 @@ action(<<"GET">>, <<"transfer_coin_to_game">> = Action, Req) ->
                                 receipt = ReceiptData,
                                 player_id = PlayerId,
                                 device_id = Usr#usr_user.device_id,
+                                xchg_accid = ExchangeAccid,
                                 wallet_addr = <<>>,
                                 gold_type = GoldType,
                                 gold = Amount,

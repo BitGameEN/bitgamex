@@ -15,6 +15,7 @@
          api_bind_wallet/1,
          api_transfer_coin_to_exchange/1,
          api_transfer_coin_to_wallet/1,
+         api_recharge_coin_to_game/1,
          api_get_coin_list_to_draw/1,
          api_draw_coin/1,
          api_consume_coin/1]).
@@ -343,6 +344,11 @@ api_transfer_coin_to_exchange([#usr_user{current_game_id = GameId, id = UserId} 
 %% 转账游戏币给绑定的钱包的接口
 api_transfer_coin_to_wallet([#usr_user{current_game_id = GameId, id = UserId} = User, GoldType, Amount, WalletAddr, ReceiptData]) ->
     {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_xchgsvr, transfer_gold_to_wallet, [GameId, UserId, GoldType, Amount, WalletAddr, ReceiptData]),
+    {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
+
+%% 从交易所充值游戏币到游戏的接口
+api_recharge_coin_to_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, GoldType, Amount, ReceiptData, VerifyCode]) ->
+    {ok, RoleGold, XchgBalance} = lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, recharge_gold_to_game, [GameId, GameKey, UserId, GoldType, Amount, ReceiptData, VerifyCode]),
     {ok, #{role_balance => RoleGold, exchange_balance => XchgBalance}}.
 
 %% 获取待领游戏币列表的接口
