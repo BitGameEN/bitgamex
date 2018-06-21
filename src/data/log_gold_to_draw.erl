@@ -33,10 +33,8 @@ set_one(R0) when is_record(R0, log_gold_to_draw) ->
 				time = Time,
 				call_flow = Call_flow
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_LOG, io_lib:format(<<"insert into gold_to_draw(id,game_id,player_id,gold_type,delta,old_value,new_value,drain_type,drain_id,drain_count,time,call_flow) values(~p,~p,~p,'~s',~p,~p,~p,'~s','~s',~p,~p,'~s'); select last_insert_id()">>,
-				[Id, Game_id, Player_id, Gold_type, Delta, Old_value, New_value, Drain_type, Drain_id, Drain_count, Time, Call_flow])),
-			R = R0#log_gold_to_draw{key_id = Insert_id, id = Insert_id},
-			R#log_gold_to_draw.key_id
+			spawn(fun() -> {ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_LOG, io_lib:format(<<"insert into gold_to_draw(id,game_id,player_id,gold_type,delta,old_value,new_value,drain_type,drain_id,drain_count,time,call_flow) values(~p,~p,~p,'~s',~p,~p,~p,'~s','~s',~p,~p,'~s'); select last_insert_id()">>,
+				[Id, Game_id, Player_id, Gold_type, Delta, Old_value, New_value, Drain_type, Drain_id, Drain_count, Time, Call_flow])) end)
 	end.
 
 syncdb(R) when is_record(R, log_gold_to_draw) ->
@@ -54,8 +52,8 @@ syncdb(R) when is_record(R, log_gold_to_draw) ->
 		time = Time,
 		call_flow = Call_flow
 	} = R,
-	db_esql:execute(?DB_LOG, <<"replace into gold_to_draw(id,game_id,player_id,gold_type,delta,old_value,new_value,drain_type,drain_id,drain_count,time,call_flow) values(?,?,?,?,?,?,?,?,?,?,?,?)">>,
-		[Id, Game_id, Player_id, Gold_type, Delta, Old_value, New_value, Drain_type, Drain_id, Drain_count, Time, Call_flow]).
+	spawn(fun() -> db_esql:execute(?DB_LOG, <<"replace into gold_to_draw(id,game_id,player_id,gold_type,delta,old_value,new_value,drain_type,drain_id,drain_count,time,call_flow) values(?,?,?,?,?,?,?,?,?,?,?,?)">>,
+		[Id, Game_id, Player_id, Gold_type, Delta, Old_value, New_value, Drain_type, Drain_id, Drain_count, Time, Call_flow]) end).
 
 build_record_from_row([Id, Game_id, Player_id, Gold_type, Delta, Old_value, New_value, Drain_type, Drain_id, Drain_count, Time, Call_flow]) ->
 	#log_gold_to_draw{

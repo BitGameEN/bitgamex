@@ -31,10 +31,8 @@ set_one(R0) when is_record(R0, log_player_login) ->
 				lang = Lang,
 				time = Time
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_LOG, io_lib:format(<<"insert into player_login(id,game_id,player_id,device_id,device_model,os_type,os_ver,ip,lang,time) values(~p,~p,~p,'~s','~s','~s','~s','~s','~s',~p); select last_insert_id()">>,
-				[Id, Game_id, Player_id, Device_id, Device_model, Os_type, Os_ver, Ip, Lang, Time])),
-			R = R0#log_player_login{key_id = Insert_id, id = Insert_id},
-			R#log_player_login.key_id
+			spawn(fun() -> {ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_LOG, io_lib:format(<<"insert into player_login(id,game_id,player_id,device_id,device_model,os_type,os_ver,ip,lang,time) values(~p,~p,~p,'~s','~s','~s','~s','~s','~s',~p); select last_insert_id()">>,
+				[Id, Game_id, Player_id, Device_id, Device_model, Os_type, Os_ver, Ip, Lang, Time])) end)
 	end.
 
 syncdb(R) when is_record(R, log_player_login) ->
@@ -50,8 +48,8 @@ syncdb(R) when is_record(R, log_player_login) ->
 		lang = Lang,
 		time = Time
 	} = R,
-	db_esql:execute(?DB_LOG, <<"replace into player_login(id,game_id,player_id,device_id,device_model,os_type,os_ver,ip,lang,time) values(?,?,?,?,?,?,?,?,?,?)">>,
-		[Id, Game_id, Player_id, Device_id, Device_model, Os_type, Os_ver, Ip, Lang, Time]).
+	spawn(fun() -> db_esql:execute(?DB_LOG, <<"replace into player_login(id,game_id,player_id,device_id,device_model,os_type,os_ver,ip,lang,time) values(?,?,?,?,?,?,?,?,?,?)">>,
+		[Id, Game_id, Player_id, Device_id, Device_model, Os_type, Os_ver, Ip, Lang, Time]) end).
 
 build_record_from_row([Id, Game_id, Player_id, Device_id, Device_model, Os_type, Os_ver, Ip, Lang, Time]) ->
 	#log_player_login{
