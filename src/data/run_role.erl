@@ -202,7 +202,7 @@ syncdb(R) when is_record(R, run_role) ->
 	} = R,
 	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_~p(player_id,ver,game_id,create_time,last_login_time,last_login_ip,game_data,old_game_data,power,time) values(?,?,?,?,?,?,?,?,?,?) on duplicate key update "
 		"ver = ?, game_id = ?, create_time = ?, last_login_time = ?, last_login_ip = ?, game_data = ?, old_game_data = ?, power = ?, time = ?">>, [Game_id]),
-		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time,Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time]) end);
+		[Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time]) end);
 syncdb(Gid) ->
 	case get_one_locally(Gid) of
 		[] -> void;

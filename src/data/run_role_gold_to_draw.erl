@@ -192,7 +192,7 @@ syncdb(R) when is_record(R, run_role_gold_to_draw) ->
 	} = R,
 	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<"insert into role_gold_to_draw_~p(player_id,ver,game_id,gold_list,time) values(?,?,?,?,?) on duplicate key update "
 		"ver = ?, game_id = ?, gold_list = ?, time = ?">>, [Game_id]),
-		[Player_id, Ver, Game_id, ?T2B(Gold_list), Time,Ver, Game_id, ?T2B(Gold_list), Time]) end);
+		[Player_id, Ver, Game_id, ?T2B(Gold_list), Time, Ver, Game_id, ?T2B(Gold_list), Time]) end);
 syncdb(Gid) ->
 	case get_one_locally(Gid) of
 		[] -> void;
