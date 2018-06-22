@@ -379,8 +379,8 @@ api_mining_pool_list() ->
             Now = util:unixtime(),
             DiffDays = util:get_diff_days(Now, MiningStartTime),
             NumOfHalfLifeCycles = DiffDays div HalfLifeDays,
-            OutputPerDay = trunc(MiningOutputFirstDay * math:pow(0.5, NumOfHalfLifeCycles)),
-            OutputTodayCurrent0 = trunc(OutputPerDay * util:get_today_current_seconds() / 86400),
+            OutputPerDay = MiningOutputFirstDay * math:pow(0.5, NumOfHalfLifeCycles),
+            OutputTodayCurrent0 = OutputPerDay * util:get_today_current_seconds() / 86400,
             % todo：临时假设是不衰减的
             {RemainAmount, OutputYesterday, OutputTodayCurrent} =
                 case TotalAmount > OutputPerDay * DiffDays of
@@ -392,7 +392,10 @@ api_mining_pool_list() ->
                         end;
                     false -> {0, util:zero_if_negative(TotalAmount - OutputPerDay * (DiffDays - 1)), 0}
                 end,
-            #{mine_name => GoldType, remain_amount => RemainAmount, yesterday_output => OutputYesterday, today_current_output => OutputTodayCurrent}
+            #{mine_name => GoldType,
+              remain_amount => trunc(RemainAmount * 1000) / 1000,
+              yesterday_output => trunc(OutputYesterday * 1000) / 1000,
+              today_current_output => trunc(OutputTodayCurrent * 1000) / 1000}
         end,
     L = [F(GoldType) || GoldType <- GoldTypes],
     {ok, #{miningpoollist => L}}.
