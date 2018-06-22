@@ -18,9 +18,11 @@
          api_recharge_coin_to_game/1,
          api_get_coin_list_to_draw/1,
          api_draw_coin/1,
-         api_consume_coin/1]).
+         api_consume_coin/1,
+         api_mining_pool_list/0]).
 
 -include("common.hrl").
+-include("record_cfg_gold_type.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
 -include("record_run_role.hrl").
@@ -365,4 +367,23 @@ api_draw_coin([#usr_user{current_game_id = GameId, id = UserId} = User, CoinId])
 api_consume_coin([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, GoldType, Amount]) ->
     {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, consume_coin, [GameId, GameKey, UserId, GoldType, Amount]),
     {ok, #{role_balance => RoleGold}}.
+
+%% 矿池矿量查询的接口
+api_mining_pool_list() ->
+    GoldTypes = cfg_gold_type:get_ids(),
+    F = fun(GoldType) ->
+            #gold_type{mining_start_time = MiningStartTime,
+                       mining_output_first_day = MiningOutputFirstDay,
+                       half_life_days = HalfLifeDays,
+                       amount = TotalAmount} = cfg_gold_type:get(GoldType),
+            Now = util:unixtime(),
+            DiffDays = util:get_diff_days(Now, MiningStartTime),
+            NumOfHalfLifeCycles = DiffDays div HalfLifeDays,
+            OutputPerDay = trunc(MiningOutputFirstDay * math:pow(0.5, NumOfHalfLifeCycles)),
+            OutputTodayCurrent = trunc(OutputPerDay * util:get_today_current_seconds() / 86400),
+            RemainAmount = TotalAmount - OutputPerDay * DiffDays - OutputTodayCurrent,
+            #{mine_name => GoldType, remain_amount => RemainAmount, yesterday_output => OutputPerDay, today_current_output => OutputTodayCurrent}
+        end,
+    L = [F(GoldType) || GoldType <- GoldTypes],
+    {ok, #{miningpoollist => L}}.
 

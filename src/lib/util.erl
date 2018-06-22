@@ -14,6 +14,7 @@
         unixtime/0,
         longunixtime/0,
         get_diff_days/2,
+        get_today_current_seconds/0,
         md5/1,
         rand/2,
         rand_list_index/1,
@@ -108,6 +109,11 @@ get_diff_days(Seconds1, Seconds2) ->
     Days2 = calendar:date_to_gregorian_days(Year2, Month2, Day2),
     DiffDays = abs(Days2 - Days1),
     DiffDays.
+
+%% 获取从午夜到现在的秒数（午夜是因为now() since 00:00 GMT, January 1, 1970）
+get_today_current_seconds() ->
+    {_, Time} = calendar:now_to_local_time(os:timestamp()),
+    calendar:time_to_seconds(Time).
 
 %% 转换成HEX格式的md5
 md5(S) ->

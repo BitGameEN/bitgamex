@@ -11,7 +11,7 @@
  Target Server Version : 50163
  File Encoding         : utf-8
 
- Date: 06/20/2018 12:42:48 PM
+ Date: 06/22/2018 19:03:11 PM
 */
 
 SET NAMES utf8;
@@ -27,6 +27,7 @@ CREATE TABLE `gold_type` (
   `mining_output_first_day` double(11,2) NOT NULL DEFAULT '0.00' COMMENT '挖矿第一天产出量',
   `half_life_days` int(11) NOT NULL DEFAULT '0' COMMENT '半衰期，多少天产出减半',
   `chain_type` varchar(20) NOT NULL DEFAULT '' COMMENT '链类型',
+  `amount` double(11,0) NOT NULL DEFAULT '0' COMMENT '总量（如果需要调整产出速率时，产出开始时间也需要修改为新规则生效时间，并结算之前的产出，剩余的量为新的总量）',
   PRIMARY KEY (`gold_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='币种定义';
 
@@ -34,7 +35,7 @@ CREATE TABLE `gold_type` (
 --  Records of `gold_type`
 -- ----------------------------
 BEGIN;
-INSERT INTO `gold_type` VALUES ('ACT', '1525017600', '100.00', '730', 'act'), ('BGX', '1525017600', '1027397.26', '730', 'eth'), ('BTC', '1525017600', '100.00', '730', 'btc'), ('ELA', '1525017600', '100.00', '730', 'ela'), ('ETH', '1525017600', '100.00', '730', 'eth'), ('MAN', '1525017600', '100.00', '730', 'eth'), ('PLY', '1528092516', '100000.00', '730', 'eth');
+INSERT INTO `gold_type` VALUES ('ACT', '1525017600', '100.00', '730', 'act', '1000000'), ('BGX', '1525017600', '1027397.26', '730', 'eth', '1500000000'), ('BTC', '1525017600', '100.00', '730', 'btc', '1000'), ('ELA', '1525017600', '100.00', '730', 'ela', '1000000'), ('ETH', '1525017600', '100.00', '730', 'eth', '10000'), ('MAN', '1525017600', '100.00', '730', 'eth', '1000000'), ('PLY', '1528092516', '100000.00', '730', 'eth', '21000000');
 COMMIT;
 
 SET FOREIGN_KEY_CHECKS = 1;

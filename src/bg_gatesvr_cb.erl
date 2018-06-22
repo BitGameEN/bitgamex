@@ -14,24 +14,36 @@ init(Req, Opts) ->
     Method = cowboy_req:method(Req),
     #{a := Action} = cowboy_req:match_qs([a], Req),
     Req2 =
-        try
-            run_data:trans_begin(),
-            {ok, ResMap} = action(Method, Action, Req),
-            run_data:trans_commit(),
-            cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
-        catch
-            throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
-                run_data:trans_rollback(),
-                cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
-            throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
-                run_data:trans_rollback(),
-                cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
-            _:ExceptionErr ->
-                run_data:trans_rollback(),
-                ?ERR("bg_gatesvr_cb exception(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, ExceptionErr, erlang:get_stacktrace()]),
-                cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
-        after
-            unlock_user()
+        case Action of
+            <<"miningpoollist">> ->
+                Reply =
+                    try
+                        {ok, ResMap} = action(Method, Action, Req),
+                        jiffy:encode(ResMap#{code => 0, message => <<"success">>, data => ResMap})
+                    catch _:_ ->
+                        jiffy:encode(#{code => 10000, message => <<"error message">>, data => <<>>})
+                    end,
+                cowboy_req:reply(200, #{}, Reply, Req);
+            _ ->
+                try
+                    run_data:trans_begin(),
+                    {ok, ResMap} = action(Method, Action, Req),
+                    run_data:trans_commit(),
+                    cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
+                catch
+                    throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
+                        run_data:trans_rollback(),
+                        cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
+                    throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
+                        run_data:trans_rollback(),
+                        cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
+                    _:ExceptionErr ->
+                        run_data:trans_rollback(),
+                        ?ERR("bg_gatesvr_cb exception(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, ExceptionErr, erlang:get_stacktrace()]),
+                        cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
+                after
+                    unlock_user()
+                end
         end,
     {ok, Req2, Opts}.
 
@@ -742,6 +754,10 @@ action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
     end,
     lock_user(Uid),
     c_gatesvr:api_consume_coin([User, GameKey, GoldType, Amount]);
+
+% https://api.bitgamex.com/?a=miningpoollist
+action(<<"GET">>, <<"miningpoollist">> = Action, _Req) ->
+    c_gatesvr:api_mining_pool_list();
 
 action(_, _Action, _Req) ->
     throw({200, ?ERRNO_ACTION_NOT_SUPPORT, <<"Action not supported">>}).

@@ -17,7 +17,8 @@ get(<<"ACT">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
-		chain_type = <<"act"/utf8>>
+		chain_type = <<"act"/utf8>>,
+		amount = 1000000
 	};
 
 get(<<"BGX">>) ->
@@ -26,7 +27,8 @@ get(<<"BGX">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 1027397.26,
 		half_life_days = 730,
-		chain_type = <<"eth"/utf8>>
+		chain_type = <<"eth"/utf8>>,
+		amount = 1500000000
 	};
 
 get(<<"BTC">>) ->
@@ -35,7 +37,8 @@ get(<<"BTC">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
-		chain_type = <<"btc"/utf8>>
+		chain_type = <<"btc"/utf8>>,
+		amount = 1000
 	};
 
 get(<<"ELA">>) ->
@@ -44,7 +47,8 @@ get(<<"ELA">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
-		chain_type = <<"ela"/utf8>>
+		chain_type = <<"ela"/utf8>>,
+		amount = 1000000
 	};
 
 get(<<"ETH">>) ->
@@ -53,7 +57,8 @@ get(<<"ETH">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
-		chain_type = <<"eth"/utf8>>
+		chain_type = <<"eth"/utf8>>,
+		amount = 10000
 	};
 
 get(<<"MAN">>) ->
@@ -62,7 +67,8 @@ get(<<"MAN">>) ->
 		mining_start_time = 1525017600,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
-		chain_type = <<"eth"/utf8>>
+		chain_type = <<"eth"/utf8>>,
+		amount = 1000000
 	};
 
 get(<<"PLY">>) ->
@@ -71,7 +77,8 @@ get(<<"PLY">>) ->
 		mining_start_time = 1528092516,
 		mining_output_first_day = 1.0e5,
 		half_life_days = 730,
-		chain_type = <<"eth"/utf8>>
+		chain_type = <<"eth"/utf8>>,
+		amount = 21000000
 	};
 
 get(_) ->
