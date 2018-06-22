@@ -14,7 +14,7 @@ get_ids() ->
 get(<<"ACT">>) ->
 	#gold_type{
 		gold_type = <<"ACT"/utf8>>,
-		mining_start_time = 1525017600,
+		mining_start_time = 1529668215,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
 		chain_type = <<"act"/utf8>>,
@@ -24,8 +24,8 @@ get(<<"ACT">>) ->
 get(<<"BGX">>) ->
 	#gold_type{
 		gold_type = <<"BGX"/utf8>>,
-		mining_start_time = 1525017600,
-		mining_output_first_day = 1027397.26,
+		mining_start_time = 1529668215,
+		mining_output_first_day = 1.0e4,
 		half_life_days = 730,
 		chain_type = <<"eth"/utf8>>,
 		amount = 1500000000
@@ -34,8 +34,8 @@ get(<<"BGX">>) ->
 get(<<"BTC">>) ->
 	#gold_type{
 		gold_type = <<"BTC"/utf8>>,
-		mining_start_time = 1525017600,
-		mining_output_first_day = 100.0,
+		mining_start_time = 1529668215,
+		mining_output_first_day = 0.01,
 		half_life_days = 730,
 		chain_type = <<"btc"/utf8>>,
 		amount = 1000
@@ -44,18 +44,18 @@ get(<<"BTC">>) ->
 get(<<"ELA">>) ->
 	#gold_type{
 		gold_type = <<"ELA"/utf8>>,
-		mining_start_time = 1525017600,
-		mining_output_first_day = 100.0,
+		mining_start_time = 1529668215,
+		mining_output_first_day = 5.0,
 		half_life_days = 730,
 		chain_type = <<"ela"/utf8>>,
-		amount = 1000000
+		amount = 100000
 	};
 
 get(<<"ETH">>) ->
 	#gold_type{
 		gold_type = <<"ETH"/utf8>>,
-		mining_start_time = 1525017600,
-		mining_output_first_day = 100.0,
+		mining_start_time = 1529668215,
+		mining_output_first_day = 0.2,
 		half_life_days = 730,
 		chain_type = <<"eth"/utf8>>,
 		amount = 10000
@@ -64,7 +64,7 @@ get(<<"ETH">>) ->
 get(<<"MAN">>) ->
 	#gold_type{
 		gold_type = <<"MAN"/utf8>>,
-		mining_start_time = 1525017600,
+		mining_start_time = 1529668215,
 		mining_output_first_day = 100.0,
 		half_life_days = 730,
 		chain_type = <<"eth"/utf8>>,
@@ -74,8 +74,8 @@ get(<<"MAN">>) ->
 get(<<"PLY">>) ->
 	#gold_type{
 		gold_type = <<"PLY"/utf8>>,
-		mining_start_time = 1528092516,
-		mining_output_first_day = 1.0e5,
+		mining_start_time = 1529668215,
+		mining_output_first_day = 1.0e4,
 		half_life_days = 730,
 		chain_type = <<"eth"/utf8>>,
 		amount = 21000000
