@@ -381,7 +381,7 @@ api_mining_pool_list() ->
             NumOfHalfLifeCycles = DiffDays div HalfLifeDays,
             OutputPerDay = trunc(MiningOutputFirstDay * math:pow(0.5, NumOfHalfLifeCycles)),
             OutputTodayCurrent = trunc(OutputPerDay * util:get_today_current_seconds() / 86400),
-            RemainAmount = TotalAmount - OutputPerDay * DiffDays - OutputTodayCurrent,
+            RemainAmount = util:zero_if_negative(TotalAmount - OutputPerDay * DiffDays - OutputTodayCurrent),
             #{mine_name => GoldType, remain_amount => RemainAmount, yesterday_output => OutputPerDay, today_current_output => OutputTodayCurrent}
         end,
     L = [F(GoldType) || GoldType <- GoldTypes],

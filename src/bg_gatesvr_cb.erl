@@ -19,7 +19,7 @@ init(Req, Opts) ->
                 Reply =
                     try
                         {ok, ResMap} = action(Method, Action, Req),
-                        jiffy:encode(ResMap#{code => 0, message => <<"success">>, data => ResMap})
+                        jiffy:encode(#{code => 0, message => <<"success">>, data => ResMap})
                     catch _:_ ->
                         jiffy:encode(#{code => 10000, message => <<"error message">>, data => <<>>})
                     end,
