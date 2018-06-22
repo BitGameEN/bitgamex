@@ -95,10 +95,9 @@ transfer_gold_to_exchange(GameId, GameKey, UserId, GoldType, Amount, ReceiptData
     transfer_gold(?GOLD_TRANSFER_TYPE_GAME_TO_XCHG, GameId, GameKey, UserId, GoldType, Amount, <<>>, ReceiptData, VerifyCode).
 
 transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAddr, ReceiptData, VerifyCode) ->
+    % 不放在trans里
     #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_GAME_TO_XCHG,
-    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
-    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0), % 先扣除
     TransactionId = lib_user_gold_transfer:gen_uuid(),
     NowDateTime = util:now_datetime_str(),
     TransferR = #usr_gold_transfer{
@@ -118,6 +117,8 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
                     receive_time = NowDateTime,
                     update_time = NowDateTime},
     usr_gold_transfer:set_one(TransferR),
+    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount0),
+    lib_role_gold:add_gold(UserId, GameId, GoldType, -Amount0), % 先扣除
     TransferDiscountToXchg = lib_global_config:get(?GLOBAL_CONFIG_KEY_TRANSFER_DISCOUNT_TO_XCHG),
     Amount = Amount0 * (1 - TransferDiscountToXchg),
     true = Amount > 0, % 相当于断言
@@ -202,10 +203,10 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
     end.
 
 recharge_gold_to_game(GameId, GameKey, UserId, GoldType, Amount, ReceiptData, VerifyCode) ->
+    % 不放在trans里
     #usr_user{id = UserId, bind_xchg_accid = BindXchgAccId, device_id = DeviceId} = usr_user:get_one(UserId),
     TransferType = ?GOLD_TRANSFER_TYPE_XCHG_TO_GAME,
     TransactionType = ?GOLD_TRANSFER_TX_TYPE_XCHG_TO_GAME,
-    lib_role_gold:put_gold_drain_type_and_drain_id(gold_transfer, TransferType, Amount),
     TransactionId = lib_user_gold_transfer:gen_uuid(),
     NowDateTime = util:now_datetime_str(),
     TransferR = #usr_gold_transfer{
