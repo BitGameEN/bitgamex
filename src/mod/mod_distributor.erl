@@ -52,11 +52,14 @@ code_change(_OldVsn, Status, _Extra) ->
 
 % 返回NewStatus
 distribute(#status{requests = Requests} = Status) ->
-    try
-        lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL div 1000)
-    catch
-        _:ErrMsg ->
-            ?ERR("distributor failed:~n~p~n", [ErrMsg])
-    end,
+    spawn(
+      fun() ->
+        try
+            lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL div 1000)
+        catch
+            _:ErrMsg ->
+                ?ERR("distributor failed:~n~p~n", [ErrMsg])
+        end
+      end),
     Status#status{requests = []}.
 
