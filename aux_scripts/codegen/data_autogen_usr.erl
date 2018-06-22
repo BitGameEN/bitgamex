@@ -30,18 +30,21 @@ mysql_halt([Sql, Reason]) ->
 
 run() ->
     init_db(),
-    gen("game"),
+    gen("game", 0),
     gen("game_reclaimed_gold"),
     gen("global_config"),
-    gen("user", true),
+    gen("user", 1),
     gen("user_gold"),
-    gen("gold_transfer"),
+    gen("gold_transfer", 0),
     ok.
 
 gen(Table0) ->
-    gen(Table0, false).
+    gen(Table0, 2).
 
-gen(Table0, AsyncDB) ->
+% NeedGid: 0 - id通过数据库自增键生成
+%          1 - id通过id_gen生成
+%          2 - id已提供，不需要生成
+gen(Table0, NeedGid) ->
     Table = list_to_binary(Table0),
     SqlNTDC = io_lib:format(<<"SELECT column_name,data_type,column_default,column_comment from information_schema.columns WHERE information_schema.columns.TABLE_NAME = '~s' and information_schema.columns.TABLE_SCHEMA = '~s'">>, [Table, ?DB_NAME]),
     FieldInfos = db_get_all(SqlNTDC),
@@ -64,7 +67,7 @@ gen(Table0, AsyncDB) ->
     FieldKeyInfos = F(F, FieldKeyInfos0, []),
     RecordName = list_to_binary(io_lib:format(<<"usr_~s">>, [Table])),
     gen_record(io_lib:format(<<"record_usr_~s.hrl">>, [Table]), RecordName, FieldNames, FieldTypes, FieldDefaults, FieldComments),
-    gen_erl(Table, io_lib:format(<<"usr_~s.erl">>, [Table]), RecordName, FieldNames, FieldTypes, FieldComments, FieldKeyInfos, RecordName, AsyncDB).
+    gen_erl(Table, io_lib:format(<<"usr_~s.erl">>, [Table]), RecordName, FieldNames, FieldTypes, FieldComments, FieldKeyInfos, RecordName, NeedGid).
 
 compare_column(A, B) ->
     A < B.
@@ -128,7 +131,7 @@ gen_record_fields([Name0 | RestNames], [Type | RestTypes], [Default0 | RestDefau
             gen_record_fields(RestNames, RestTypes, RestDefaults, RestComments, S)
     end.
 
-gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, FieldKeyInfos, RecordName, AsyncDB) ->
+gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, FieldKeyInfos, RecordName, NeedGid) ->
     FieldNames2 = get_names_upper_1st(FieldNames),
     PriNames = get_pri_names(FieldKeyInfos),
     PriNames2 = get_names_upper_1st(PriNames),
@@ -144,6 +147,19 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     gen_erl_note(Table, ModuleName, OtherKeysLower, S),
 
     io:format(S, "get_one(~s = Id) ->~n", [PriId]),
+    io:format(S, "\tcase run_data:in_trans() of~n", []),
+    io:format(S, "\t\ttrue ->~n", []),
+    io:format(S, "\t\t\tcase run_data:trans_get(~s, Id) of~n", [RecordName]),
+    io:format(S, "\t\t\t\t[] ->~n", []),
+    io:format(S, "\t\t\t\t\tget_one_(Id);~n", []),
+    io:format(S, "\t\t\t\ttrans_deleted -> [];~n", []),
+    io:format(S, "\t\t\t\tR -> R~n", []),
+    io:format(S, "\t\t\tend;~n", []),
+    io:format(S, "\t\tfalse ->~n", []),
+    io:format(S, "\t\t\tget_one_(Id)~n", []),
+    io:format(S, "\tend.~n~n", []),
+
+    io:format(S, "get_one_(~s = Id) ->~n", [PriId]),
     io:format(S, "\tcase cache:get(cache_key(Id)) of~n", []),
     io:format(S, "\t\t{true, _Cas, Val} ->~n", []),
     io:format(S, "\t\t\tVal;~n", []),
@@ -185,30 +201,72 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "set_one(R0) when is_record(R0, ~s) ->~n", [RecordName]),
     io:format(S, "\tcase R0#~s.key_id =:= undefined of~n", [RecordName]),
     io:format(S, "\t\tfalse ->~n", []),
-    case AsyncDB of
-        true ->
-            io:format(S, "\t\t\tspawn(fun() -> syncdb(R0) end),~n", []);
-        false ->
-            io:format(S, "\t\t\tsyncdb(R0),~n", [])
-    end,
-    %io:format(S, "\t\t\tcache:del(cache_key(R0#~s.key_id)),~n", [RecordName]),
-    io:format(S, "\t\t\tcache:set(cache_key(R0#~s.key_id), R0),~n", [RecordName]),
+    io:format(S, "\t\t\tcase run_data:in_trans() of~n", []),
+    io:format(S, "\t\t\t\ttrue ->~n", []),
+    io:format(S, "\t\t\t\t\trun_data:trans_set(~s, R0#~s.key_id, R0,~n", [RecordName, RecordName]),
+    io:format(S, "\t\t\t\t\t\tvoid,~n", []),
+    io:format(S, "\t\t\t\t\t\tvoid);~n", []),
+    io:format(S, "\t\t\t\tfalse ->~n", []),
+    io:format(S, "\t\t\t\t\tsyncdb(R0),~n", []),
+    %io:format(S, "\t\t\t\t\tcache:del(cache_key(R0#~s.key_id))~n", [RecordName]),
+    io:format(S, "\t\t\t\t\tcache:set(cache_key(R0#~s.key_id), R0)~n", [RecordName]),
+    io:format(S, "\t\t\tend,~n", []),
     io:format(S, "\t\t\tR0#~s.key_id;~n", [RecordName]),
     io:format(S, "\t\ttrue ->~n", []),
     io:format(S, "\t\t\t#~s{~n", [RecordName]),
-    gen_erl_fields(FieldNames, FieldNames2, S),
-    io:format(S, "\t\t\t} = R0,~n", []),
-    io:format(S, "\t\t\t{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<\"insert into ~s(~s) values(~s); select last_insert_id()\">>,~n\t\t\t\t[~s])),~n",
-        [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]),
-    io:format(S, "\t\t\tR = R0#~s{key_id = Insert_id, ~s = Insert_id},~n", [RecordName, gen_pri_id(PriNames)]),
-    io:format(S, "\t\t\tcache:set(cache_key(R#~s.key_id), R),~n", [RecordName]),
+    case NeedGid of
+        1 ->
+            [PriFieldName | FieldNames_] = FieldNames,
+            [PriFieldName2 | FieldNames2_] = FieldNames2,
+            io:format(S, "\t\t\t\t~s = ~s_0,~n", [PriFieldName, PriFieldName2]),
+            gen_erl_fields(FieldNames_, FieldNames2_, S),
+            io:format(S, "\t\t\t} = R0,~n", []),
+            io:format(S, "\t\t\t~s = id_gen:gen_id(~s),~n", [PriFieldName2, RecordName]),
+            io:format(S, "\t\t\tR = R0#~s{key_id = ~s, ~s = ~s},~n", [RecordName, PriFieldName2, gen_pri_id(PriNames), PriFieldName2]);
+        2 ->
+            [PriFieldName2 | _] = FieldNames2,
+            gen_erl_fields(FieldNames, FieldNames2, S),
+            io:format(S, "\t\t\t} = R0,~n", []),
+            io:format(S, "\t\t\tR = R0#~s{key_id = ~s},~n", [RecordName, PriId]);
+        0 ->
+            gen_erl_fields(FieldNames, FieldNames2, S),
+            io:format(S, "\t\t\t} = R0,~n", []),
+            io:format(S, "\t\t\t{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<\"insert into ~s(~s) values(~s); select last_insert_id()\">>,~n\t\t\t\t[~s])),~n",
+                [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]),
+            io:format(S, "\t\t\tR = R0#~s{key_id = Insert_id, ~s = Insert_id},~n", [RecordName, gen_pri_id(PriNames)])
+    end,
+    io:format(S, "\t\t\tF = fun() ->~n", []),
+    case NeedGid of
+        1 ->
+            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_USR, io_lib:format(<<\"insert into ~s(~s) values(~s)\">>,~n\t\t\t\t\t\t[~s])) end),~n",
+                [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]);
+        2 ->
+            io:format(S, "\t\t\t\t\trun_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_USR, io_lib:format(<<\"insert into ~s(~s) values(~s)\">>,~n\t\t\t\t\t\t[~s])) end),~n",
+                [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder2(FieldTypes), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]);
+        0 -> void
+    end,
+    io:format(S, "\t\t\t\t\tcache:set(cache_key(R#~s.key_id), R)~n", [RecordName]),
+    io:format(S, "\t\t\t\tend,~n", []),
+    io:format(S, "\t\t\tcase run_data:in_trans() of~n", []),
+    io:format(S, "\t\t\t\ttrue ->~n", []),
+    io:format(S, "\t\t\t\t\trun_data:trans_set(~s, R#~s.key_id, {trans_inserted, R}, F, fun() -> ~s:del_one(R, true) end);~n", [RecordName, RecordName, RecordName]),
+    io:format(S, "\t\t\t\tfalse ->~n", []),
+    io:format(S, "\t\t\t\t\tF()~n", []),
+    io:format(S, "\t\t\tend,~n", []),
     io:format(S, "\t\t\tR#~s.key_id~n", [RecordName]),
     io:format(S, "\tend.~n~n", []),
 
     io:format(S, "del_one(R) when is_record(R, ~s) ->~n", [RecordName]),
-    io:format(S, "\t~s = R#~s.key_id,~n", [PirId2, RecordName]),
-    io:format(S, "\tdb_esql:execute(?DB_USR, <<\"delete from ~s where ~s\">>, [~s]),~n", [Table, gen_id_sql(PriNames), PirId2]),
-    io:format(S, "\tcache:del(cache_key(R#~s.key_id)),~n", [RecordName]),
+    io:format(S, "\tcase run_data:in_trans() of~n", []),
+    io:format(S, "\t\ttrue ->~n", []),
+    io:format(S, "\t\t\trun_data:trans_del(~s, R#~s.key_id,~n", [RecordName, RecordName]),
+    io:format(S, "\t\t\t\tfun() -> ~s:del_one(R) end,~n", [RecordName]),
+    io:format(S, "\t\t\t\tvoid);~n", []),
+    io:format(S, "\t\tfalse ->~n", []),
+    io:format(S, "\t\t\t~s = R#~s.key_id,~n", [PirId2, RecordName]),
+    io:format(S, "\t\t\trun_data:db_write(del, R, fun() -> db_esql:execute(?DB_USR, <<\"delete from ~s where ~s\">>, [~s]) end),~n", [Table, gen_id_sql(PriNames), PirId2]),
+    io:format(S, "\t\t\tcache:del(cache_key(R#~s.key_id))~n", [RecordName]),
+    io:format(S, "\tend,~n", []),
     io:format(S, "\tok.~n~n", []),
 
     io:format(S, "clean_all_cache() ->~n", []),
@@ -228,8 +286,13 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "\t#~s{~n", [RecordName]),
     gen_erl_fields(FieldNames, FieldNames2, S, <<"\t\t">>),
     io:format(S, "\t} = R,~n", []),
-    io:format(S, "\tdb_esql:execute(?DB_USR, <<\"replace into ~s(~s) values(~s)\">>,~n\t\t[~s]).~n~n",
-        [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder(length(FieldNames)), gen_fields_sql(FieldNames2, FieldTypes, FieldComments)]),
+    [_ | NonPriFieldNames] = FieldNames,
+    [_ | NonPriFieldNames2] = FieldNames2,
+    [_ | NonPriFieldTypes] = FieldTypes,
+    [_ | NonPriFieldComments] = FieldComments,
+    io:format(S, "\trun_data:db_write(upd, R, fun() -> db_esql:execute(?DB_USR, io_lib:format(<<\"insert into ~s(~s) values(~s) on duplicate key update \"~n\t\t\"~s\">>, []),~n\t\t[~s, ~s]) end).~n~n",
+        [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder(length(FieldNames)), gen_update_fields_sql(NonPriFieldNames),
+         gen_fields_sql(FieldNames2, FieldTypes, FieldComments), gen_fields_sql(NonPriFieldNames2, NonPriFieldTypes, NonPriFieldComments)]),
 
     io:format(S, "build_record_from_row([", []),
     [FieldName | RestFieldNames] = FieldNames2,
@@ -361,6 +424,11 @@ gen_fields_sql(FieldNames, FieldTypes, FieldComments) ->
     Fields = lists:zip3(FieldNames, FieldTypes, FieldComments),
     FieldNames2 = [NameF(Field) || Field <- Fields],
     L = util:implode(", ", FieldNames2),
+    list_to_binary(L).
+
+gen_update_fields_sql(FieldNames) ->
+    FieldNamesN = [<<Name/binary, " = ?">> || Name <- FieldNames],
+    L = util:implode(", ", FieldNamesN),
     list_to_binary(L).
 
 gen_fields_placeholder(Len) ->

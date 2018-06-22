@@ -8,6 +8,19 @@
 -include("record_usr_gold_transfer.hrl").
 
 get_one(Id = Id) ->
+	case run_data:in_trans() of
+		true ->
+			case run_data:trans_get(usr_gold_transfer, Id) of
+				[] ->
+					get_one_(Id);
+				trans_deleted -> [];
+				R -> R
+			end;
+		false ->
+			get_one_(Id)
+	end.
+
+get_one_(Id = Id) ->
 	case cache:get(cache_key(Id)) of
 		{true, _Cas, Val} ->
 			Val;
@@ -75,8 +88,15 @@ set_field(Id = Id, Field, Val) ->
 set_one(R0) when is_record(R0, usr_gold_transfer) ->
 	case R0#usr_gold_transfer.key_id =:= undefined of
 		false ->
-			syncdb(R0),
-			cache:set(cache_key(R0#usr_gold_transfer.key_id), R0),
+			case run_data:in_trans() of
+				true ->
+					run_data:trans_set(usr_gold_transfer, R0#usr_gold_transfer.key_id, R0,
+						void,
+						void);
+				false ->
+					syncdb(R0),
+					cache:set(cache_key(R0#usr_gold_transfer.key_id), R0)
+			end,
 			R0#usr_gold_transfer.key_id;
 		true ->
 			#usr_gold_transfer{
@@ -100,14 +120,29 @@ set_one(R0) when is_record(R0, usr_gold_transfer) ->
 			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold_type,gold,status,error_tag,receive_game_id,receive_time,update_time) values(~p,~p,~p,'~s','~s',~p,'~s','~s','~s','~s',~p,~p,'~s',~p,~p,~p); select last_insert_id()">>,
 				[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold_type, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time])),
 			R = R0#usr_gold_transfer{key_id = Insert_id, id = Insert_id},
-			cache:set(cache_key(R#usr_gold_transfer.key_id), R),
+			F = fun() ->
+					cache:set(cache_key(R#usr_gold_transfer.key_id), R)
+				end,
+			case run_data:in_trans() of
+				true ->
+					run_data:trans_set(usr_gold_transfer, R#usr_gold_transfer.key_id, {trans_inserted, R}, F, fun() -> usr_gold_transfer:del_one(R, true) end);
+				false ->
+					F()
+			end,
 			R#usr_gold_transfer.key_id
 	end.
 
 del_one(R) when is_record(R, usr_gold_transfer) ->
-	Id = R#usr_gold_transfer.key_id,
-	db_esql:execute(?DB_USR, <<"delete from gold_transfer where id=?">>, [Id]),
-	cache:del(cache_key(R#usr_gold_transfer.key_id)),
+	case run_data:in_trans() of
+		true ->
+			run_data:trans_del(usr_gold_transfer, R#usr_gold_transfer.key_id,
+				fun() -> usr_gold_transfer:del_one(R) end,
+				void);
+		false ->
+			Id = R#usr_gold_transfer.key_id,
+			run_data:db_write(del, R, fun() -> db_esql:execute(?DB_USR, <<"delete from gold_transfer where id=?">>, [Id]) end),
+			cache:del(cache_key(R#usr_gold_transfer.key_id))
+	end,
 	ok.
 
 clean_all_cache() ->
@@ -142,8 +177,9 @@ syncdb(R) when is_record(R, usr_gold_transfer) ->
 		receive_time = Receive_time,
 		update_time = Update_time
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold_type,gold,status,error_tag,receive_game_id,receive_time,update_time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)">>,
-		[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold_type, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]).
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_USR, io_lib:format(<<"insert into gold_transfer(id,type,transaction_type,transaction_id,receipt,player_id,device_id,xchg_accid,wallet_addr,gold_type,gold,status,error_tag,receive_game_id,receive_time,update_time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on duplicate key update "
+		"type = ?, transaction_type = ?, transaction_id = ?, receipt = ?, player_id = ?, device_id = ?, xchg_accid = ?, wallet_addr = ?, gold_type = ?, gold = ?, status = ?, error_tag = ?, receive_game_id = ?, receive_time = ?, update_time = ?">>, []),
+		[Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold_type, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold_type, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]) end).
 
 build_record_from_row([Id, Type, Transaction_type, Transaction_id, Receipt, Player_id, Device_id, Xchg_accid, Wallet_addr, Gold_type, Gold, Status, Error_tag, Receive_game_id, Receive_time, Update_time]) ->
 	#usr_gold_transfer{

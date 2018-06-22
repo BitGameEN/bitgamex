@@ -502,7 +502,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     [_ | NonPriFieldNames2] = FieldNames2,
     [_ | NonPriFieldTypes] = FieldTypes,
     [_ | NonPriFieldComments] = FieldComments,
-    io:format(S, "\trun_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s) on duplicate key update \"~n\t\t\"~s\">>, [Game_id]),~n\t\t[~s,~s]) end);~n",
+    io:format(S, "\trun_data:db_write(upd, R, fun() -> db_esql:execute(?DB_RUN, io_lib:format(<<\"insert into ~s_~~p(~s) values(~s) on duplicate key update \"~n\t\t\"~s\">>, [Game_id]),~n\t\t[~s, ~s]) end);~n",
         [Table, gen_id_no_bracket(FieldNames, ","), gen_fields_placeholder(length(FieldNames)), gen_update_fields_sql(NonPriFieldNames),
          gen_fields_sql(FieldNames2, FieldTypes, FieldComments), gen_fields_sql(NonPriFieldNames2, NonPriFieldTypes, NonPriFieldComments)]),
 

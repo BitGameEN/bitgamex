@@ -8,6 +8,19 @@
 -include("record_usr_user_gold.hrl").
 
 get_one(Player_id = Id) ->
+	case run_data:in_trans() of
+		true ->
+			case run_data:trans_get(usr_user_gold, Id) of
+				[] ->
+					get_one_(Id);
+				trans_deleted -> [];
+				R -> R
+			end;
+		false ->
+			get_one_(Id)
+	end.
+
+get_one_(Player_id = Id) ->
 	case cache:get(cache_key(Id)) of
 		{true, _Cas, Val} ->
 			Val;
@@ -33,8 +46,15 @@ set_field(Player_id = Id, Field, Val) ->
 set_one(R0) when is_record(R0, usr_user_gold) ->
 	case R0#usr_user_gold.key_id =:= undefined of
 		false ->
-			syncdb(R0),
-			cache:set(cache_key(R0#usr_user_gold.key_id), R0),
+			case run_data:in_trans() of
+				true ->
+					run_data:trans_set(usr_user_gold, R0#usr_user_gold.key_id, R0,
+						void,
+						void);
+				false ->
+					syncdb(R0),
+					cache:set(cache_key(R0#usr_user_gold.key_id), R0)
+			end,
 			R0#usr_user_gold.key_id;
 		true ->
 			#usr_user_gold{
@@ -42,17 +62,32 @@ set_one(R0) when is_record(R0, usr_user_gold) ->
 				gold = Gold,
 				time = Time
 			} = R0,
-			{ok, [[Insert_id|_]]} = db_esql:multi_execute(?DB_USR, io_lib:format(<<"insert into user_gold(player_id,gold,time) values(~p,'~s',~p); select last_insert_id()">>,
-				[Player_id, Gold, Time])),
-			R = R0#usr_user_gold{key_id = Insert_id, player_id = Insert_id},
-			cache:set(cache_key(R#usr_user_gold.key_id), R),
+			R = R0#usr_user_gold{key_id = Player_id},
+			F = fun() ->
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_USR, io_lib:format(<<"insert into user_gold(player_id,gold,time) values(~p,'~s',~p)">>,
+						[Player_id, Gold, Time])) end),
+					cache:set(cache_key(R#usr_user_gold.key_id), R)
+				end,
+			case run_data:in_trans() of
+				true ->
+					run_data:trans_set(usr_user_gold, R#usr_user_gold.key_id, {trans_inserted, R}, F, fun() -> usr_user_gold:del_one(R, true) end);
+				false ->
+					F()
+			end,
 			R#usr_user_gold.key_id
 	end.
 
 del_one(R) when is_record(R, usr_user_gold) ->
-	Player_id = R#usr_user_gold.key_id,
-	db_esql:execute(?DB_USR, <<"delete from user_gold where player_id=?">>, [Player_id]),
-	cache:del(cache_key(R#usr_user_gold.key_id)),
+	case run_data:in_trans() of
+		true ->
+			run_data:trans_del(usr_user_gold, R#usr_user_gold.key_id,
+				fun() -> usr_user_gold:del_one(R) end,
+				void);
+		false ->
+			Player_id = R#usr_user_gold.key_id,
+			run_data:db_write(del, R, fun() -> db_esql:execute(?DB_USR, <<"delete from user_gold where player_id=?">>, [Player_id]) end),
+			cache:del(cache_key(R#usr_user_gold.key_id))
+	end,
 	ok.
 
 clean_all_cache() ->
@@ -74,8 +109,9 @@ syncdb(R) when is_record(R, usr_user_gold) ->
 		gold = Gold,
 		time = Time
 	} = R,
-	db_esql:execute(?DB_USR, <<"replace into user_gold(player_id,gold,time) values(?,?,?)">>,
-		[Player_id, Gold, Time]).
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_USR, io_lib:format(<<"insert into user_gold(player_id,gold,time) values(?,?,?) on duplicate key update "
+		"gold = ?, time = ?">>, []),
+		[Player_id, Gold, Time, Gold, Time]) end).
 
 build_record_from_row([Player_id, Gold, Time]) ->
 	#usr_user_gold{
