@@ -23,7 +23,8 @@ init(Req, Opts) ->
                     catch _:_ ->
                         jiffy:encode(#{code => 10000, message => <<"error message">>, data => <<>>})
                     end,
-                cowboy_req:reply(200, #{}, Reply, Req);
+                ReqCors = cowboy_req:set_resp_header(<<"access-control-allow-origin">>, <<$*>>, Req),
+                cowboy_req:reply(200, #{}, Reply, ReqCors);
             _ ->
                 try
                     run_data:trans_begin(),
