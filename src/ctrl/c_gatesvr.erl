@@ -108,6 +108,8 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
                 time = Now
             },
     log_player_login:set_one(LogR),
+    % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
+    run_data:trans_commit(),
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
@@ -174,6 +176,8 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
                 time = Now
             },
     log_player_login:set_one(LogR),
+    % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
+    run_data:trans_commit(),
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
