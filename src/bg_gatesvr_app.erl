@@ -94,7 +94,7 @@ init_idgen() ->
     {ok, _} = supervisor:start_child(
                 bg_gatesvr_sup,
                 {id_gen,
-                {id_gen, start_link,[ConnPoolSize, Host]},
+                {id_gen, start_link, [ConnPoolSize, Host]},
                 permanent, 10000, supervisor, [id_gen]}),
     ok.
 

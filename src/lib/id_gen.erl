@@ -20,11 +20,11 @@ start_link(ConnPoolSize, Host) ->
     {ok, Pid}.
 
 set_start_id(Type, StartId) when is_atom(Type), is_integer(StartId) ->
-    ok = cberl:set(gk_idgen, id_key(Type), 0, integer_to_binary(StartId), none),
+    ok = cberl:set(bg_idgen, id_key(Type), 0, integer_to_binary(StartId), none),
     ok.
 
 gen_id(Type) when is_atom(Type) ->
-    {ok, _, IdBin} = cberl:incr(gk_idgen, id_key(Type), 1),
+    {ok, _, IdBin} = cberl:incr(bg_idgen, id_key(Type), 1),
     binary_to_integer(IdBin).
 
 id_key(Type) ->
