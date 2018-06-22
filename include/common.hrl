@@ -50,6 +50,7 @@
 
 %%缓存连接
 -define(CACHE, bg_cache).
+-define(IDGEN, bg_idgen).
 -define(CACHE_HOST, "127.0.0.1").
 %% CACHE_HOST:
 %% A list of hosts:port separated by ';' to the

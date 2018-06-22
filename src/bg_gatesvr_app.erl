@@ -15,6 +15,7 @@ start(_Type, _Args) ->
     ok = init_db(),
     {ok, SupPid} = bg_gatesvr_sup:start_link([Ip, list_to_integer(Port), list_to_integer(ServerId)]),
     ok = init_cache(),
+    ok = init_idgen(),
     {ok, SupPid}.
 
 stop(_State) ->
@@ -77,5 +78,23 @@ init_cache() ->
                 {cache,
                 {cache, start_link, [ConnPoolSize, Host]},
                 permanent, 10000, supervisor, [cache]}),
+    ok.
+
+%% 唯一id生成
+init_idgen() ->
+    ConnPoolSize = case application:get_env(cache_conn_pool_size) of
+        {ok, CacheConnPoolSize} -> CacheConnPoolSize;
+        undefined -> 5
+    end,
+    Host = case application:get_env(cache_host) of
+        {ok, CacheHost} -> CacheHost;
+        undefined -> ?CACHE_HOST
+    end,
+    ?INFO("couchbase(as id_gen): host=~p, poolsize=~p~n", [Host, ConnPoolSize]),
+    {ok, _} = supervisor:start_child(
+                bg_gatesvr_sup,
+                {id_gen,
+                {id_gen, start_link,[ConnPoolSize, Host]},
+                permanent, 10000, supervisor, [id_gen]}),
     ok.
 
