@@ -170,7 +170,7 @@ set_one(R0) when is_record(R0, usr_user) ->
 				end,
 			case run_data:in_trans() of
 				true ->
-					run_data:trans_set(usr_user, R#usr_user.key_id, {trans_inserted, R}, F, fun() -> usr_user:del_one(R, true) end);
+					run_data:trans_set(usr_user, R#usr_user.key_id, {trans_inserted, R}, F, fun() -> usr_user:del_one(R) end);
 				false ->
 					F()
 			end,

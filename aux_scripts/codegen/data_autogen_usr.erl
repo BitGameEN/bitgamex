@@ -249,7 +249,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "\t\t\t\tend,~n", []),
     io:format(S, "\t\t\tcase run_data:in_trans() of~n", []),
     io:format(S, "\t\t\t\ttrue ->~n", []),
-    io:format(S, "\t\t\t\t\trun_data:trans_set(~s, R#~s.key_id, {trans_inserted, R}, F, fun() -> ~s:del_one(R, true) end);~n", [RecordName, RecordName, RecordName]),
+    io:format(S, "\t\t\t\t\trun_data:trans_set(~s, R#~s.key_id, {trans_inserted, R}, F, fun() -> ~s:del_one(R) end);~n", [RecordName, RecordName, RecordName]),
     io:format(S, "\t\t\t\tfalse ->~n", []),
     io:format(S, "\t\t\t\t\tF()~n", []),
     io:format(S, "\t\t\tend,~n", []),

@@ -125,7 +125,7 @@ set_one(R0) when is_record(R0, usr_gold_transfer) ->
 				end,
 			case run_data:in_trans() of
 				true ->
-					run_data:trans_set(usr_gold_transfer, R#usr_gold_transfer.key_id, {trans_inserted, R}, F, fun() -> usr_gold_transfer:del_one(R, true) end);
+					run_data:trans_set(usr_gold_transfer, R#usr_gold_transfer.key_id, {trans_inserted, R}, F, fun() -> usr_gold_transfer:del_one(R) end);
 				false ->
 					F()
 			end,
