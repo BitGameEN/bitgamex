@@ -59,5 +59,5 @@ get_bind_uid(BindType, _BindVal) ->
 
 get_hash_id(PlayerId) ->
     PlayerIdBin = integer_to_binary(PlayerId),
-    "bgu" ++ util:md5(<<"BitGameUserId", PlayerIdBin/binary, "BIT.GAME.USER@2018.6.25.17.26.30~Zgc">>).
+    list_to_binary("bgu" ++ util:md5(<<"BitGameUserId", PlayerIdBin/binary, "BIT.GAME.USER@2018.6.25.17.26.30~Zgc">>)).
 

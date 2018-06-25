@@ -117,5 +117,5 @@ clear_gold_drain_type_and_drain_id() ->
 
 get_hash_id(GameId) ->
     GameIdBin = integer_to_binary(GameId),
-    "bgg" ++ util:md5(<<"BitGameGameId", GameIdBin/binary, "BIT.GAME.GAME@2018.6.25.17.29.15~Zgc">>).
+    list_to_binary("bgg" ++ util:md5(<<"BitGameGameId", GameIdBin/binary, "BIT.GAME.GAME@2018.6.25.17.29.15~Zgc">>)).
 
