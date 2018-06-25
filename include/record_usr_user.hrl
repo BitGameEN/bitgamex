@@ -28,6 +28,7 @@
 		status = 0, % 玩家状态（0-正常，1-封禁）
 		forbid_login_endtime = 0, % 封号截止时间
 		bind_xchg_accid = <<"">>, % 绑定的交易所账号id
+		bind_xchg_uid = 0, % 绑定的交易所唯一id（bind_xchg_accid可能会变，但该id不变）
 		bind_wallet_addr = <<"">>, % 绑定的钱包地址
 		time = 0 % 更新时间戳
 }).

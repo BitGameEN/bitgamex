@@ -25,7 +25,7 @@ get_one_(Id = Id) ->
 		{true, _Cas, Val} ->
 			Val;
 		_ ->
-			case db_esql:get_row(?DB_USR, <<"select id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_wallet_addr,time from user where id=?">>, [Id]) of
+			case db_esql:get_row(?DB_USR, <<"select id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_xchg_uid,bind_wallet_addr,time from user where id=?">>, [Id]) of
 				[] -> [];
 				Row ->
 					R = build_record_from_row(Row),
@@ -158,14 +158,15 @@ set_one(R0) when is_record(R0, usr_user) ->
 				status = Status,
 				forbid_login_endtime = Forbid_login_endtime,
 				bind_xchg_accid = Bind_xchg_accid,
+				bind_xchg_uid = Bind_xchg_uid,
 				bind_wallet_addr = Bind_wallet_addr,
 				time = Time
 			} = R0,
 			Id = id_gen:gen_id(usr_user),
 			R = R0#usr_user{key_id = Id, id = Id},
 			F = fun() ->
-					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_USR, io_lib:format(<<"insert into user(id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_wallet_addr,time) values(~p,'~s','~s','~s','~s',~p,'~s','~s',~p,'~s','~s','~s',~p,'~s','~s','~s','~s','~s',~p,~p,~p,~p,'~s','~s',~p)">>,
-						[Id, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_wallet_addr, Time])) end),
+					run_data:db_write(add, R, fun() -> 1 = db_esql:execute(?DB_USR, io_lib:format(<<"insert into user(id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_xchg_uid,bind_wallet_addr,time) values(~p,'~s','~s','~s','~s',~p,'~s','~s',~p,'~s','~s','~s',~p,'~s','~s','~s','~s','~s',~p,~p,~p,~p,'~s',~p,'~s',~p)">>,
+						[Id, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_xchg_uid, Bind_wallet_addr, Time])) end),
 					cache:set(cache_key(R#usr_user.key_id), R)
 				end,
 			case run_data:in_trans() of
@@ -228,14 +229,15 @@ syncdb(R) when is_record(R, usr_user) ->
 		status = Status,
 		forbid_login_endtime = Forbid_login_endtime,
 		bind_xchg_accid = Bind_xchg_accid,
+		bind_xchg_uid = Bind_xchg_uid,
 		bind_wallet_addr = Bind_wallet_addr,
 		time = Time
 	} = R,
-	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_USR, io_lib:format(<<"insert into user(id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_wallet_addr,time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on duplicate key update "
-		"hash_id = ?, user_name = ?, password = ?, player_name = ?, avatar = ?, device_id = ?, org_device_id = ?, is_bind = ?, ios_gamecenter_id = ?, google_id = ?, facebook_id = ?, current_game_id = ?, current_game_uid = ?, session_token = ?, lang = ?, os_type = ?, country_code = ?, create_time = ?, last_login_time = ?, status = ?, forbid_login_endtime = ?, bind_xchg_accid = ?, bind_wallet_addr = ?, time = ?">>, []),
-		[Id, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_wallet_addr, Time, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_wallet_addr, Time]) end).
+	run_data:db_write(upd, R, fun() -> db_esql:execute(?DB_USR, io_lib:format(<<"insert into user(id,hash_id,user_name,password,player_name,avatar,device_id,org_device_id,is_bind,ios_gamecenter_id,google_id,facebook_id,current_game_id,current_game_uid,session_token,lang,os_type,country_code,create_time,last_login_time,status,forbid_login_endtime,bind_xchg_accid,bind_xchg_uid,bind_wallet_addr,time) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on duplicate key update "
+		"hash_id = ?, user_name = ?, password = ?, player_name = ?, avatar = ?, device_id = ?, org_device_id = ?, is_bind = ?, ios_gamecenter_id = ?, google_id = ?, facebook_id = ?, current_game_id = ?, current_game_uid = ?, session_token = ?, lang = ?, os_type = ?, country_code = ?, create_time = ?, last_login_time = ?, status = ?, forbid_login_endtime = ?, bind_xchg_accid = ?, bind_xchg_uid = ?, bind_wallet_addr = ?, time = ?">>, []),
+		[Id, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_xchg_uid, Bind_wallet_addr, Time, Hash_id, util:esc(User_name), Password, util:esc(Player_name), Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_xchg_uid, Bind_wallet_addr, Time]) end).
 
-build_record_from_row([Id, Hash_id, User_name, Password, Player_name, Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_wallet_addr, Time]) ->
+build_record_from_row([Id, Hash_id, User_name, Password, Player_name, Avatar, Device_id, Org_device_id, Is_bind, Ios_gamecenter_id, Google_id, Facebook_id, Current_game_id, Current_game_uid, Session_token, Lang, Os_type, Country_code, Create_time, Last_login_time, Status, Forbid_login_endtime, Bind_xchg_accid, Bind_xchg_uid, Bind_wallet_addr, Time]) ->
 	#usr_user{
 		key_id = Id,
 		id = Id,
@@ -261,6 +263,7 @@ build_record_from_row([Id, Hash_id, User_name, Password, Player_name, Avatar, De
 		status = Status,
 		forbid_login_endtime = Forbid_login_endtime,
 		bind_xchg_accid = Bind_xchg_accid,
+		bind_xchg_uid = Bind_xchg_uid,
 		bind_wallet_addr = Bind_wallet_addr,
 		time = Time
 	}.

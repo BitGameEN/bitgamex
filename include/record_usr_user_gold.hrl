@@ -6,6 +6,6 @@
 -record(usr_user_gold, {
 		key_id,
 		player_id = 0, % 用户id（玩家id）
-		gold = <<"">>, % 金币，json格式：{"bgx":数量, "btc":数量, "eth":数量, ...}
+		gold = <<"">>, % 金币，json格式：{"BGX":数量, "BTC":数量, "ETH":数量, ...}
 		time = 0 % 更新时间戳
 }).
