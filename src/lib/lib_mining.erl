@@ -49,7 +49,7 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
             Total = lists:sum([V || {_, V, _} <- DistributeL0]),
             DistributeL = case Total =< Quota of
                               true -> DistributeL0;
-                              false -> [{K, Quota * V / Total, T} || {K, V, T} <- DistributeL0]
+                              false -> [{K, util:round5d(Quota * V / Total), T} || {K, V, T} <- DistributeL0]
                           end,
             [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
                {{UserId, GameId}, AddGold, Time} <- DistributeL]
