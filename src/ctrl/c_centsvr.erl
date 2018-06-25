@@ -161,8 +161,12 @@ transfer_gold(TransferType, GameId, GameKey, UserId, GoldType, Amount0, WalletAd
     OkCallback =
         fun(Data) ->
             Balance =
-                case lists:keyfind(<<"balance">>, 1, Data) of
-                    {_, Balance_} -> Balance_;
+                case is_list(Data) of
+                    true ->
+                        case lists:keyfind(<<"balance">>, 1, Data) of
+                            {_, Balance_} -> Balance_;
+                            false -> -1
+                        end;
                     false -> -1
                 end,
             lib_user_gold_transfer:update_transfer_log(TransactionType, TransactionId, {ok, GoldType, Amount0}),
@@ -265,8 +269,12 @@ recharge_gold_to_game(GameId, GameKey, UserId, GoldType, Amount, ReceiptData, Ve
     OkCallback =
         fun(Data) ->
             Balance =
-                case lists:keyfind(<<"balance">>, 1, Data) of
-                    {_, Balance_} -> Balance_;
+                case is_list(Data) of
+                    true ->
+                        case lists:keyfind(<<"balance">>, 1, Data) of
+                            {_, Balance_} -> Balance_;
+                            false -> -1
+                        end;
                     false -> -1
                 end,
             % 加金币
