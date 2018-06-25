@@ -181,8 +181,13 @@ transfer_coin_in_game(GameId, UserId, DstUserId, GoldType, Amount, ReceiptData) 
     end.
 
 get_coin_list_to_draw(GameId, UserId) ->
-    #run_role_gold_to_draw{gold_list = GoldList0} = run_role_gold_to_draw:get_one({GameId, UserId}),
-    {ok, {[{integer_to_binary(TimeKey), {[{coin_type, GoldType}, {amount, Amount}]}} || {TimeKey, GoldType, Amount} <- GoldList0]}}.
+    #run_role_gold_to_draw{gold_list = GoldList} = run_role_gold_to_draw:get_one({GameId, UserId}),
+    {ok, {[case One of
+               {TimeKey, {GoldType, DrainType}, Amount} ->
+                   {integer_to_binary(TimeKey), {[{coin_type, GoldType}, {amount, Amount}, {from_type, DrainType}]}};
+               {TimeKey, GoldType, Amount} ->
+                   {integer_to_binary(TimeKey), {[{coin_type, GoldType}, {amount, Amount}, {from_type, ?MINING_DRAIN_TYPE_LOGIN}]}}
+           end || One <- GoldList]}}.
 
 draw_coin(GameId, UserId, CoinId) ->
   try
@@ -192,7 +197,11 @@ draw_coin(GameId, UserId, CoinId) ->
     case lists:keyfind(CoinId, 1, GoldListToDraw) of
         false ->
             throw({-1, <<"the specified coin id was not found">>});
-        {_, GoldType, Amount} ->
+        {_, Type, Amount} ->
+            GoldType = case Type of
+                           {GT, _DT} -> GT;
+                           GT -> GT
+                       end,
             lib_role_gold:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
             lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),

@@ -3,7 +3,7 @@
 %%% @Description: 角色待领金币相关处理
 %%%--------------------------------------
 -module(lib_role_gold_to_draw).
--export([add_gold_to_draw/4, delete_gold_to_draw/3, put_gold_drain_type_and_drain_id/3]).
+-export([add_gold_to_draw/5, delete_gold_to_draw/3, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
 -include("record_run_role_gold_to_draw.hrl").
@@ -11,14 +11,15 @@
 
 -define(MAX_SIZE_GOLD_LIST, 20).
 
-% 调用者保证T不一样
-add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0) when is_list(GoldListToDraw0) ->
+% 调用者保证T（时间）不一样
+add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0, DrainType) when is_list(GoldListToDraw0) ->
     {true, Cas} = lock(PlayerId),
     try
-        GoldListToDraw = [{T, GoldType, V} || {T, V} <- GoldListToDraw0],
+        TheType = {GoldType, DrainType},
+        GoldListToDraw = [{T, TheType, V} || {T, V} <- GoldListToDraw0],
         RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
         OldGoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
-        OldGoldListOfTheType = [{T, V} || {T, GT, V} <- OldGoldList, GT =:= GoldType],
+        OldGoldListOfTheType = [{T, V} || {T, Type, V} <- OldGoldList, Type =:= TheType],
         NewGoldList = case length(OldGoldList) < ?MAX_SIZE_GOLD_LIST of
                           true -> GoldListToDraw ++ OldGoldList;
                           false ->
@@ -27,7 +28,7 @@ add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0) when is_list(GoldL
                                       RestGoldList = lists:keydelete(HeadT, 1, OldGoldList),
                                       SumGold = lists:sum([V || {_, V} <- [{HeadT, HeadV} | GoldListToDraw0]]),
                                       MaxTime = lists:max([T || {T, _} <- GoldListToDraw0]),
-                                      [{MaxTime, GoldType, SumGold} | RestGoldList];
+                                      [{MaxTime, TheType, SumGold} | RestGoldList];
                                   _ ->
                                       GoldListToDraw ++ OldGoldList
                               end
@@ -69,12 +70,16 @@ delete_gold_to_draw(PlayerId, GameId, CoinId) ->
         GoldList = RoleGoldToDraw#run_role_gold_to_draw.gold_list,
         case lists:keyfind(CoinId, 1, GoldList) of
             false -> void;
-            {_, GoldType, Amount} ->
+            {_, TheType, Amount} ->
+            GoldType = case TheType of
+                           {GT, _DT} -> GT;
+                           GT -> GT
+                       end,
                 NewGoldList = lists:keydelete(CoinId, 1, GoldList),
                 run_role_gold_to_draw:set_one(RoleGoldToDraw#run_role_gold_to_draw{gold_list = NewGoldList, time = util:unixtime()}),
-                OldGoldToDraw = lists:sum([V || {_, GT, V} <- GoldList, GT =:= GoldType]),
+                OldGoldToDraw = lists:sum([V || {_, Type, V} <- GoldList, Type =:= TheType]),
                 DeltaGoldToDraw = -Amount,
-                NewGoldToDraw = lists:sum([V || {_, GT, V} <- NewGoldList, GT =:= GoldType]),
+                NewGoldToDraw = lists:sum([V || {_, Type, V} <- NewGoldList, Type =:= TheType]),
                 R = #log_gold_to_draw{
                         player_id = PlayerId,
                         game_id = GameId,

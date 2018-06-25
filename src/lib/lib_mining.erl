@@ -23,8 +23,10 @@
 
 get_output_quota(LogicType, GoldType, DurationSeconds) ->
     Proportion = case LogicType of
-                     game -> 1 - lib_global_config:get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_LOGIN);
-                     login -> lib_global_config:get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_LOGIN)
+                     login -> lib_global_config:get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_LOGIN);
+                     random -> lib_global_config:get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_RANDOM);
+                     game -> lib_global_config:get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_GAME);
+                     _ -> 0
                  end,
     case cfg_gold_type:get(GoldType) of
         #gold_type{mining_start_time = MiningStartTime, mining_output_first_day = MiningOutputFirstDay, half_life_days = HalfLifeDays} ->
@@ -49,7 +51,7 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
                               true -> DistributeL0;
                               false -> [{K, Quota * V / Total, T} || {K, V, T} <- DistributeL0]
                           end,
-            [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}]) ||
+            [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
                {{UserId, GameId}, AddGold, Time} <- DistributeL]
         end,
     [DistributeFunSameGT(GT) || GT <- GTs],
@@ -80,7 +82,7 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
             Now = util:unixtime(),
             TimeList = [Now - (I - 1) * 7200 || I <- lists:seq(1, length(AddGoldList))],
             TimeToAddGoldPairs = lists:zip(TimeList, AddGoldList),
-            [lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{T, G}]) || {T, G} <- TimeToAddGoldPairs];
+            [lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{T, G}], ?MINING_DRAIN_TYPE_LOGIN) || {T, G} <- TimeToAddGoldPairs];
         false -> void
     end,
     ok.

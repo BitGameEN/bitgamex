@@ -110,7 +110,7 @@ CREATE TABLE `global_config` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `global_config` (`id`, `global_key`, `content`) VALUES (1,'transfer_discount_in_game','0.002'),(2,'transfer_discount_to_xchg','0.002'),(3,'gold_proportion_for_login','0.3');
+INSERT INTO `global_config` (`id`, `global_key`, `content`) VALUES (1,'transfer_discount_in_game','0.002'),(2,'transfer_discount_to_xchg','0.002'),(3,'gold_proportion_for_login','0.3'), (4, 'gold_proportion_for_random', '0.1'), (5, 'gold_proportion_for_game', '0.6');
 
 -- ----------------------------
 --  Table structure for `gold_transfer`
