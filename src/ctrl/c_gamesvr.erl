@@ -221,7 +221,8 @@ consume_coin(GameId, GameKey, UserId, GoldType, Amount) ->
     lib_game:put_gold_drain_type_and_drain_id(consume_coin, GoldType, Amount),
     lib_game:add_reclaimed_gold(GameId, GoldType, Amount),
     RoleGold = run_role_gold:get_one({GameId, UserId}),
-    ok = lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, consume_gold, [GameId, GameKey, UserId, GoldType, Amount]),
+    % todo：因为centsvr还没有实现该接口，暂时注释掉
+    %ok = lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, consume_gold, [GameId, GameKey, UserId, GoldType, Amount]),
     run_data:trans_commit(),
     {ok, RoleGold#run_role_gold.gold}
 
