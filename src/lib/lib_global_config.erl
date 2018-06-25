@@ -28,6 +28,18 @@ get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_LOGIN = Key) ->
         #usr_global_config{content = Val} ->
             util:clamp(0, 1, binary_to_float(Val))
     end;
+get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_RANDOM = Key) ->
+    case usr_global_config:get_one(Key) of
+        [] -> 0.1;
+        #usr_global_config{content = Val} ->
+            util:clamp(0, 1, binary_to_float(Val))
+    end;
+get(?GLOBAL_CONFIG_KEY_GOLD_PROPORTION_FOR_GAME = Key) ->
+    case usr_global_config:get_one(Key) of
+        [] -> 0.6;
+        #usr_global_config{content = Val} ->
+            util:clamp(0, 1, binary_to_float(Val))
+    end;
 get(_) ->
     undefined.
 
