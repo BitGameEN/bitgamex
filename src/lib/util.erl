@@ -18,7 +18,7 @@
         md5/1,
         rand/2,
         rand_list_index/1,
-        round5d/1,
+        round8d/1,
         clamp/3,
         ceil/1,
         floor/1,
@@ -156,9 +156,9 @@ rand_list_index([],_,_,Index) -> Index+1;
 rand_list_index([Rate|RateList2] = _RateList,Ram,RateBase,Index) ->
     rand_list_index(RateList2,Ram,RateBase+Rate,Index+1).
 
-%%四舍五入保留5位小数
-round5d(N) ->
-    round(N*100000)/100000.
+%%四舍五入保留8位小数
+round8d(N) ->
+    round(N*100000000)/100000000.
 
 % 将val钳制在min和max之间
 clamp(Min, Max, Val) ->

@@ -49,7 +49,7 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
             Total = lists:sum([V || {_, V, _} <- DistributeL0]),
             DistributeL = case Total =< Quota of
                               true -> DistributeL0;
-                              false -> [{K, util:round5d(Quota * V / Total), T} || {K, V, T} <- DistributeL0]
+                              false -> [{K, util:round8d(Quota * V / Total), T} || {K, V, T} <- DistributeL0]
                           end,
             [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
                {{UserId, GameId}, AddGold, Time} <- DistributeL]
@@ -65,7 +65,7 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
     PowerSum = lists:sum([P || {_, P} <- get_power_list()]),
     Role = run_role:get_one({GameId, PlayerId}),
     AddGold0 = get_output_quota(login, TheGT, DurationSeconds) * Role#run_role.power / PowerSum,
-    AddGold = util:round5d(AddGold0),
+    AddGold = util:round8d(AddGold0),
     case AddGold > 0 of
         true ->
             lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(distribute_login_delta_golds, 0, 0),
@@ -74,7 +74,7 @@ distribute_login_delta_golds(PlayerId, GameId, DurationSeconds0) ->
                               0 ->
                                   [AddGold];
                               _ ->
-                                  Average = util:round5d(AddGold / (DurationSeconds / 7200)),
+                                  Average = util:round8d(AddGold / (DurationSeconds / 7200)),
                                   L = lists:duplicate(N, Average),
                                   Remainder = AddGold - Average * N,
                                   [Remainder | L]
