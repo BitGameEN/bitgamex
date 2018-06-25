@@ -30,20 +30,22 @@ init(Req, Opts) ->
                     run_data:trans_begin(),
                     {ok, ResMap} = action(Method, Action, Req),
                     run_data:trans_commit(),
+                    unlock_user(),
                     cowboy_req:reply(200, #{}, lib_http:reply_body_succ(ResMap), Req)
                 catch
                     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
                         run_data:trans_rollback(),
+                        unlock_user(),
                         cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
                     throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
                         run_data:trans_rollback(),
+                        unlock_user(),
                         cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
                     _:ExceptionErr ->
                         run_data:trans_rollback(),
+                        unlock_user(),
                         ?ERR("bg_gatesvr_cb exception(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, ExceptionErr, erlang:get_stacktrace()]),
                         cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ?ERRNO_EXCEPTION, ?T2B(ExceptionErr)), Req)
-                after
-                    unlock_user()
                 end
         end,
     {ok, Req2, Opts}.
