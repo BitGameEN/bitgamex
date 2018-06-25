@@ -58,7 +58,7 @@ distribute(#status{requests = Requests} = Status) ->
             lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL div 1000)
         catch
             _:ErrMsg ->
-                ?ERR("distributor failed:~n~p~n", [ErrMsg])
+                ?ERR("distributor failed:~p~nstack=~p~n", [ErrMsg, erlang:get_stacktrace()])
         end
       end),
     Status#status{requests = []}.
