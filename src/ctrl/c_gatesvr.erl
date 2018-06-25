@@ -46,6 +46,8 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
                                                  create_time = Now,
                                                  time = Now},
                         Id = usr_user:set_one(ToCreateUser),
+                        U = usr_user:get_one(Id),
+                        usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
                         Id;
                     Ids ->
@@ -64,6 +66,8 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
                                                                  create_time = Now,
                                                                  time = Now},
                                         Id = usr_user:set_one(ToCreateUser),
+                                        U = usr_user:get_one(Id),
+                                        usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
                                         Id;
                                     UnbindId -> % 还有未绑定的，则用这个未绑定的账号
@@ -90,7 +94,12 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
         false ->
             void
     end,
-    ToUpdateUser = User#usr_user{device_id = DeviceId,
+    HashId = case User#usr_user.hash_id of
+                 <<>> -> lib_user:get_hash_id(UserId);
+                 HID -> HID
+             end,
+    ToUpdateUser = User#usr_user{hash_id = HashId,
+                                 device_id = DeviceId,
                                  current_game_id = GameId,
                                  session_token = SessionToken,
                                  last_login_time = Now,
@@ -111,7 +120,7 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
     % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
     run_data:trans_commit(),
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
-    {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
+    {ok, #{uid => UserId, hash_id => HashId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}};
 api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) when UserName =/= <<>> ->
@@ -137,6 +146,8 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
                                                          create_time = Now,
                                                          time = Now},
                                 Id = usr_user:set_one(ToCreateUser),
+                                U = usr_user:get_one(Id),
+                                usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                 usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
                                 Id
                         end;
@@ -158,7 +169,12 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
         true ->
             void
     end,
-    ToUpdateUser = User#usr_user{device_id = DeviceId,
+    HashId = case User#usr_user.hash_id of
+                 <<>> -> lib_user:get_hash_id(UserId);
+                 HID -> HID
+             end,
+    ToUpdateUser = User#usr_user{hash_id = HashId,
+                                 device_id = DeviceId,
                                  current_game_id = GameId,
                                  session_token = SessionToken,
                                  last_login_time = Now,
@@ -179,7 +195,7 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
     % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
     run_data:trans_commit(),
     {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
-    {ok, #{uid => UserId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
+    {ok, #{uid => UserId, hash_id => HashId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}}.
 

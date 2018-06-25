@@ -4,6 +4,7 @@
 %%%--------------------------------------
 -module(lib_game).
 -export([set_gamesvr_num/1, gamesvr_num/0, game_hard_coef/1, add_reclaimed_gold/3, put_gold_drain_type_and_drain_id/3]).
+-export([get_hash_id/1]).
 
 -include("common.hrl").
 -include("record_usr_game.hrl").
@@ -113,4 +114,8 @@ clear_gold_drain_type_and_drain_id() ->
     erase(game_gold_drain_id),
     erase(game_gold_drain_count),
     ok.
+
+get_hash_id(GameId) ->
+    GameIdBin = integer_to_binary(GameId),
+    "bgg" ++ util:md5(<<"BitGameGameId", GameIdBin/binary, "BIT.GAME.GAME@2018.6.25.17.29.15~Zgc">>).
 

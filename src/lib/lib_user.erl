@@ -5,6 +5,7 @@
 -module(lib_user).
 -export([lock/1, unlock/2]).
 -export([get_last_login_uid_of_org_device_id/1, get_unbind_uid_of_org_device_id/1, get_bind_uid/2]).
+-export([get_hash_id/1]).
 
 -include("common.hrl").
 
@@ -55,4 +56,8 @@ get_bind_uid(<<"fb_id">> = BindType, BindVal) ->
     end;
 get_bind_uid(BindType, _BindVal) ->
     throw({?ERRNO_WRONG_PARAM, <<"unsupported bind_type: ", BindType/binary>>}).
+
+get_hash_id(PlayerId) ->
+    PlayerIdBin = integer_to_binary(PlayerId),
+    "bgu" ++ util:md5(<<"BitGameUserId", PlayerIdBin/binary, "BIT.GAME.USER@2018.6.25.17.26.30~Zgc">>).
 
