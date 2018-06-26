@@ -60,7 +60,8 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
             Gids = [Gid || {Uid, Gid} <- UidGidPairs, Uid =:= LuckyUserId],
             LuckyGameId = util:rand_one(Gids),
             RandomQuota = get_output_quota(random, TheGT, DurationSeconds),
-            lib_role_gold_to_draw:add_gold_to_draw(LuckyUserId, LuckyGameId, TheGT, [{util:unixtime(), RandomQuota}], ?MINING_DRAIN_TYPE_RANDOM)
+            LuckyAddGold = util:round8d(RandomQuota),
+            lib_role_gold_to_draw:add_gold_to_draw(LuckyUserId, LuckyGameId, TheGT, [{util:unixtime(), LuckyAddGold}], ?MINING_DRAIN_TYPE_RANDOM)
         end,
     [DistributeFunSameGT(GT) || GT <- GTs],
     ok.
