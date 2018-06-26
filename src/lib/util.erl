@@ -17,6 +17,7 @@
         get_today_current_seconds/0,
         md5/1,
         rand/2,
+        rand_one/1,
         rand_list_index/1,
         round8d/1,
         clamp/3,
@@ -133,6 +134,9 @@ rand(Min, Max) ->
     end,
     M = Min - 1,
     rand:uniform(Max - M) + M.
+
+rand_one([E]) -> E;
+rand_one(L) when is_list(L) -> lists:nth(util:rand(1, length(L)), L).
 
 %%从一个随机list中随机一个index
 %%例如list是 [0.4, 0.3, 0.2, 0.1]，

@@ -52,7 +52,15 @@ distribute_game_delta_golds(Requests, DurationSeconds) ->
                               false -> [{K, util:round8d(Quota * V / Total), T} || {K, V, T} <- DistributeL0]
                           end,
             [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
-               {{UserId, GameId}, AddGold, Time} <- DistributeL]
+               {{UserId, GameId}, AddGold, Time} <- DistributeL],
+            % 幸运随机挖矿
+            UidGidPairs = [{Uid, Gid} || #add_gold_req{uid = Uid, game_id = Gid} <- RequestsTheGT],
+            Uids = lists:usort([Uid || {Uid, _} <- UidGidPairs]), % 去重
+            LuckyUserId = util:rand_one(Uids),
+            Gids = [Gid || {Uid, Gid} <- UidGidPairs, Uid =:= LuckyUserId],
+            LuckyGameId = util:rand_one(Gids),
+            RandomQuota = get_output_quota(random, TheGT, DurationSeconds),
+            lib_role_gold_to_draw:add_gold_to_draw(LuckyUserId, LuckyGameId, TheGT, [{util:unixtime(), RandomQuota}], ?MINING_DRAIN_TYPE_RANDOM)
         end,
     [DistributeFunSameGT(GT) || GT <- GTs],
     ok.
