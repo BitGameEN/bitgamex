@@ -447,15 +447,15 @@ is_process_alive(Pid) ->
         case is_pid(Pid) of
             true ->
                 case rpc:call(node(Pid), erlang, is_process_alive, [Pid]) of
-                    {badrpc, Reason} ->
-                        ?ERR("is_process_alive: pid=~p, from_node=~p, to_node=~p, reason=~p~nstack=~p~n", [Pid, node(), node(Pid), Reason, erlang:get_stacktrace()]),
-                        false;
+                    {badrpc, Reason} -> throw({badrpc, Reason});
                     Res -> Res
                 end;
             false -> false
         end
     catch
-        _:_ -> false
+        _:Error ->
+            ?ERR("is_process_alive: pid=~p, from_node=~p, to_node=~p, reason=~p~nstack=~p~n", [Pid, node(), node(Pid), Error, erlang:get_stacktrace()]),
+            false
     end.
 
 upper_1st_char(<<First:8, Rest/binary>>) when First >= $a, First =< $z ->
