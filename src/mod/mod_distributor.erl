@@ -55,10 +55,13 @@ distribute(#status{requests = Requests} = Status) ->
     spawn(
       fun() ->
         try
-            lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL div 1000)
+            run_data:trans_begin(),
+            lib_mining:distribute_game_delta_golds(Requests, ?TO_DISTRIBUTE_INTERVAL div 1000),
+            run_data:trans_commit()
         catch
             _:ErrMsg ->
-                ?ERR("distributor failed:~p~nstack=~p~n", [ErrMsg, erlang:get_stacktrace()])
+                run_data:trans_rollback(),
+                ?ERR("distributor failed:~p~nrequests=~p~nstack=~p~n", [ErrMsg, Requests, erlang:get_stacktrace()])
         end
       end),
     Status#status{requests = []}.
