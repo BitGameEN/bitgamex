@@ -45,7 +45,7 @@ get(<<"ELA">>) ->
 	#gold_type{
 		gold_type = <<"ELA"/utf8>>,
 		mining_start_time = 1529668215,
-		mining_output_first_day = 5.0,
+		mining_output_first_day = 1.0,
 		half_life_days = 730,
 		chain_type = <<"ela"/utf8>>,
 		amount = 100000
