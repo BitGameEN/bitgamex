@@ -57,6 +57,7 @@ init_start_ids() ->
 get_max_id(usr_user) ->
     case db_esql:get_one(?DB_USR, <<"select max(id) from user">>, []) of
         null -> 0;
+        undefined -> 0;
         Count -> Count
     end;
 get_max_id(_) ->
