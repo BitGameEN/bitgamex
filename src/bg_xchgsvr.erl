@@ -26,7 +26,7 @@ init([]) ->
     %    ]}
     %]),
     %
-    %{ok, _} = cowboy:start_tls(https_listener, 100, [
+    %{ok, _} = cowboy:start_tls(https_listener, [
     %    {port, Port},
     %    {cacertfile, "../priv/ssl/bitgame-ca.crt"},
     %    {certfile, "../priv/ssl/server.crt"},
