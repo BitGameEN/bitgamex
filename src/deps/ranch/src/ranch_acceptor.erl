@@ -1,4 +1,4 @@
-%% Copyright (c) 2011-2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2011-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -14,17 +14,17 @@
 
 -module(ranch_acceptor).
 
--export([start_link/3]).
--export([loop/3]).
+-export([start_link/4]).
+-export([loop/4]).
 
--spec start_link(inet:socket(), module(), pid())
+-spec start_link(inet:socket(), module(), module(), pid())
 	-> {ok, pid()}.
-start_link(LSocket, Transport, ConnsSup) ->
-	Pid = spawn_link(?MODULE, loop, [LSocket, Transport, ConnsSup]),
+start_link(LSocket, Transport, Logger, ConnsSup) ->
+	Pid = spawn_link(?MODULE, loop, [LSocket, Transport, Logger, ConnsSup]),
 	{ok, Pid}.
 
--spec loop(inet:socket(), module(), pid()) -> no_return().
-loop(LSocket, Transport, ConnsSup) ->
+-spec loop(inet:socket(), module(), module(), pid()) -> no_return().
+loop(LSocket, Transport, Logger, ConnsSup) ->
 	_ = case Transport:accept(LSocket, infinity) of
 		{ok, CSocket} ->
 			case Transport:controlling_process(CSocket, ConnsSup) of
@@ -39,20 +39,23 @@ loop(LSocket, Transport, ConnsSup) ->
 		%% We can't accept anymore anyway, so we might as well wait
 		%% a little for the situation to resolve itself.
 		{error, emfile} ->
+			ranch:log(warning,
+				"Ranch acceptor reducing accept rate: out of file descriptors~n",
+				[], Logger),
 			receive after 100 -> ok end;
 		%% We want to crash if the listening socket got closed.
 		{error, Reason} when Reason =/= closed ->
 			ok
 	end,
-	flush(),
-	?MODULE:loop(LSocket, Transport, ConnsSup).
+	flush(Logger),
+	?MODULE:loop(LSocket, Transport, Logger, ConnsSup).
 
-flush() ->
+flush(Logger) ->
 	receive Msg ->
-		error_logger:error_msg(
+		ranch:log(warning,
 			"Ranch acceptor received unexpected message: ~p~n",
-			[Msg]),
-		flush()
+			[Msg], Logger),
+		flush(Logger)
 	after 0 ->
 		ok
 	end.

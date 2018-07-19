@@ -1,5 +1,5 @@
 %% Copyright (c) 2013, James Fish <james@fishcakez.com>
-%% Copyright (c) 2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2015-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -15,6 +15,7 @@
 
 -module(sendfile_SUITE).
 -compile(export_all).
+-compile(nowarn_export_all).
 
 -import(ct_helper, [config/2]).
 -import(ct_helper, [doc/1]).
@@ -41,7 +42,7 @@ groups() ->
 
 init_per_suite(Config) ->
 	Filename = filename:join(config(priv_dir, Config), "sendfile"),
-	Binary = crypto:rand_bytes(20 * 1024 * 1024),
+	Binary = crypto:strong_rand_bytes(20 * 1024 * 1024),
 	ok = file:write_file(Filename, Binary),
 	[{filename, Filename} | Config].
 
@@ -227,6 +228,12 @@ rawfile_range_small(Config) ->
 	ok = Transport:close(Server).
 
 ssl_chunk_size(Config) ->
+	case code:is_module_native(?MODULE) of
+		true -> doc("This test uses tracing and is not compatible with native code.");
+		false -> do_ssl_chunk_size(Config)
+	end.
+
+do_ssl_chunk_size(Config) ->
 	doc("Use sendfile with SSL. Ensure the sendfile fallback respects the chunk size."),
 	Transport = config(transport, Config),
 	Filename = config(filename, Config),
@@ -273,7 +280,7 @@ sockets(Config) ->
 	end,
 	_ = spawn_link(Fun),
 	{ok, Server} = Transport:accept(LSocket, 500),
-	ok = Transport:accept_ack(Server, 500),
+	{ok, _} = Transport:handshake(Server, [], 500),
 	receive
 		{ok, Client} ->
 			ok = Transport:close(LSocket),

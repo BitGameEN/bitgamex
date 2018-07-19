@@ -1,4 +1,4 @@
-%% Copyright (c) 2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2015-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -17,7 +17,12 @@
 -export([init/2]).
 
 init(_, _) ->
-	ct_helper:start([ranch, ssl]),
+	%% Allow a more relaxed restart intensity because
+	%% some tests will cause quick restarts of several
+	%% ranch_sup children.
+	application:set_env(ranch, ranch_sup_intensity, 10),
+	application:set_env(ranch, ranch_sup_period, 1),
+	ct_helper:start([ranch]),
 	ct_helper:make_certs_in_ets(),
 	error_logger:add_report_handler(ct_helper_error_h),
 	{ok, undefined}.

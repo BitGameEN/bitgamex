@@ -1,4 +1,4 @@
-%% Copyright (c) 2011-2014, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2011-2017, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -28,7 +28,7 @@
 -export([compile/1]).
 -export([execute/2]).
 
--type bindings() :: [{atom(), binary()}].
+-type bindings() :: #{atom() => any()}.
 -type tokens() :: [binary()].
 -export_type([bindings/0]).
 -export_type([tokens/0]).
@@ -82,6 +82,8 @@ compile_paths([{PathMatch, Fields, Handler, Opts}|Tail], Acc)
 		Fields, Handler, Opts}|Tail], Acc);
 compile_paths([{'_', Fields, Handler, Opts}|Tail], Acc) ->
 	compile_paths(Tail, [{'_', Fields, Handler, Opts}] ++ Acc);
+compile_paths([{<<"*">>, Fields, Handler, Opts}|Tail], Acc) ->
+	compile_paths(Tail, [{<<"*">>, Fields, Handler, Opts}|Acc]);
 compile_paths([{<< $/, PathMatch/bits >>, Fields, Handler, Opts}|Tail],
 		Acc) ->
 	PathRules = compile_rules(PathMatch, $/, [], [], <<>>),
@@ -99,12 +101,11 @@ compile_rules(<< S, Rest/bits >>, S, Segments, Rules, <<>>) ->
 	compile_rules(Rest, S, Segments, Rules, <<>>);
 compile_rules(<< S, Rest/bits >>, S, Segments, Rules, Acc) ->
 	compile_rules(Rest, S, [Acc|Segments], Rules, <<>>);
+%% Colon on path segment start is special, otherwise allow.
 compile_rules(<< $:, Rest/bits >>, S, Segments, Rules, <<>>) ->
 	{NameBin, Rest2} = compile_binding(Rest, S, <<>>),
 	Name = binary_to_atom(NameBin, utf8),
 	compile_rules(Rest2, S, Segments, Rules, Name);
-compile_rules(<< $:, _/bits >>, _, _, _, _) ->
-	error(badarg);
 compile_rules(<< $[, $., $., $., $], Rest/bits >>, S, Segments, Rules, Acc)
 		when Acc =:= <<>> ->
 	compile_rules(Rest, S, ['...'|Segments], Rules, Acc);
@@ -218,10 +219,10 @@ match([], _, _) ->
 	{error, notfound, host};
 %% If the host is '_' then there can be no constraints.
 match([{'_', [], PathMatchs}|_Tail], _, Path) ->
-	match_path(PathMatchs, undefined, Path, []);
+	match_path(PathMatchs, undefined, Path, #{});
 match([{HostMatch, Fields, PathMatchs}|Tail], Tokens, Path)
 		when is_list(Tokens) ->
-	case list_match(Tokens, HostMatch, []) of
+	case list_match(Tokens, HostMatch, #{}) of
 		false ->
 			match(Tail, Tokens, Path);
 		{true, Bindings, HostInfo} ->
@@ -252,6 +253,8 @@ match_path([{'_', [], Handler, Opts}|_Tail], HostInfo, _, Bindings) ->
 	{ok, Handler, Opts, Bindings, HostInfo, undefined};
 match_path([{<<"*">>, _, Handler, Opts}|_Tail], HostInfo, <<"*">>, Bindings) ->
 	{ok, Handler, Opts, Bindings, HostInfo, undefined};
+match_path([_|Tail], HostInfo, <<"*">>, Bindings) ->
+	match_path(Tail, HostInfo, <<"*">>, Bindings);
 match_path([{PathMatch, Fields, Handler, Opts}|Tail], HostInfo, Tokens,
 		Bindings) when is_list(Tokens) ->
 	case list_match(Tokens, PathMatch, Bindings) of
@@ -276,21 +279,17 @@ check_constraints([Field|Tail], Bindings) when is_atom(Field) ->
 	check_constraints(Tail, Bindings);
 check_constraints([Field|Tail], Bindings) ->
 	Name = element(1, Field),
-	case lists:keyfind(Name, 1, Bindings) of
-		false ->
-			check_constraints(Tail, Bindings);
-		{_, Value} ->
+	case Bindings of
+		#{Name := Value0} ->
 			Constraints = element(2, Field),
-			case cowboy_constraints:validate(Value, Constraints) of
-				true ->
-					check_constraints(Tail, Bindings);
-				{true, Value2} ->
-					Bindings2 = lists:keyreplace(Name, 1, Bindings,
-						{Name, Value2}),
-					check_constraints(Tail, Bindings2);
-				false ->
+			case cowboy_constraints:validate(Value0, Constraints) of
+				{ok, Value} ->
+					check_constraints(Tail, Bindings#{Name => Value});
+				{error, _} ->
 					nomatch
-			end
+			end;
+		_ ->
+			check_constraints(Tail, Bindings)
 	end.
 
 -spec split_host(binary()) -> tokens().
@@ -329,9 +328,8 @@ split_path(Path, Acc) ->
 				<< Segment:Pos/binary, _:8, Rest/bits >> = Path,
 				split_path(Rest, [Segment|Acc])
 		end
-	catch
-		error:badarg ->
-			badrequest
+	catch error:_ ->
+		badrequest
 	end.
 
 remove_dot_segments([], Acc) ->
@@ -369,13 +367,13 @@ list_match([E|Tail], [E|TailMatch], Binds) ->
 %% Bind E to the variable name V and continue,
 %% unless V was already defined and E isn't identical to the previous value.
 list_match([E|Tail], [V|TailMatch], Binds) when is_atom(V) ->
-	case lists:keyfind(V, 1, Binds) of
-		{_, E} ->
+	case Binds of
+		#{V := E} ->
 			list_match(Tail, TailMatch, Binds);
-		{_, _} ->
+		#{V := _} ->
 			false;
-		false ->
-			list_match(Tail, TailMatch, [{V, E}|Binds])
+		_ ->
+			list_match(Tail, TailMatch, Binds#{V => E})
 	end;
 %% Match complete.
 list_match([], [], Binds) ->
@@ -436,7 +434,10 @@ compile_test_() ->
 			{[<<"hats">>, <<"page">>, number], [], h, o}]}]},
 		{[{"[...]ninenines.eu", [{"/hats/[...]", h, o}]}],
 			[{[<<"eu">>, <<"ninenines">>, '...'], [], [
-				{[<<"hats">>, '...'], [], h, o}]}]}
+				{[<<"hats">>, '...'], [], h, o}]}]},
+		%% Path segment containing a colon.
+		{[{'_', [{"/foo/bar:blah", h, o}]}], [{'_', [], [
+			{[<<"foo">>, <<"bar:blah">>], [], h, o}]}]}
 	],
 	[{lists:flatten(io_lib:format("~p", [Rt])),
 		fun() -> Rs = compile(Rt) end} || {Rt, Rs} <- Tests].
@@ -465,7 +466,7 @@ split_path_test_() ->
 		{<<"/extend//cowboy">>, [<<"extend">>, <<>>, <<"cowboy">>]},
 		{<<"/users">>, [<<"users">>]},
 		{<<"/users/42/friends">>, [<<"users">>, <<"42">>, <<"friends">>]},
-		{<<"/users/a+b/c%21d">>, [<<"users">>, <<"a b">>, <<"c!d">>]}
+		{<<"/users/a%20b/c%21d">>, [<<"users">>, <<"a b">>, <<"c!d">>]}
 	],
 	[{P, fun() -> R = split_path(P) end} || {P, R} <- Tests].
 
@@ -491,23 +492,23 @@ match_test_() ->
 		]}
 	],
 	Tests = [
-		{<<"any">>, <<"/">>, {ok, match_any, [], []}},
+		{<<"any">>, <<"/">>, {ok, match_any, [], #{}}},
 		{<<"www.any.ninenines.eu">>, <<"/users/42/mails">>,
-			{ok, match_any_subdomain_users, [], []}},
+			{ok, match_any_subdomain_users, [], #{}}},
 		{<<"www.ninenines.eu">>, <<"/users/42/mails">>,
-			{ok, match_any, [], []}},
+			{ok, match_any, [], #{}}},
 		{<<"www.ninenines.eu">>, <<"/">>,
-			{ok, match_any, [], []}},
+			{ok, match_any, [], #{}}},
 		{<<"www.any.ninenines.eu">>, <<"/not_users/42/mails">>,
 			{error, notfound, path}},
 		{<<"ninenines.eu">>, <<"/">>,
-			{ok, match_extend, [], []}},
+			{ok, match_extend, [], #{}}},
 		{<<"ninenines.eu">>, <<"/users/42/friends">>,
-			{ok, match_extend_users_friends, [], [{id, <<"42">>}]}},
+			{ok, match_extend_users_friends, [], #{id => <<"42">>}}},
 		{<<"erlang.fr">>, '_',
-			{ok, match_erlang_ext, [], [{ext, <<"fr">>}]}},
+			{ok, match_erlang_ext, [], #{ext => <<"fr">>}}},
 		{<<"any">>, <<"/users/444/friends">>,
-			{ok, match_users_friends, [], [{id, <<"444">>}]}}
+			{ok, match_users_friends, [], #{id => <<"444">>}}}
 	],
 	[{lists:flatten(io_lib:format("~p, ~p", [H, P])), fun() ->
 		{ok, Handler, Opts, Binds, undefined, undefined}
@@ -521,29 +522,21 @@ match_info_test_() ->
 		]},
 		{[<<"eu">>, <<"ninenines">>, '...'], [], [
 			{'_', [], match_any, []}
-		]},
-		% Cyrillic from a latin1 encoded file.
-		{[<<209,128,209,132>>, <<209,129,208,176,208,185,209,130>>], [], [
-			{[<<208,191,209,131,209,130,209,140>>, '...'], [], match_path, []}
 		]}
 	],
 	Tests = [
 		{<<"ninenines.eu">>, <<"/">>,
-			{ok, match_any, [], [], [], undefined}},
+			{ok, match_any, [], #{}, [], undefined}},
 		{<<"bugs.ninenines.eu">>, <<"/">>,
-			{ok, match_any, [], [], [<<"bugs">>], undefined}},
+			{ok, match_any, [], #{}, [<<"bugs">>], undefined}},
 		{<<"cowboy.bugs.ninenines.eu">>, <<"/">>,
-			{ok, match_any, [], [], [<<"cowboy">>, <<"bugs">>], undefined}},
+			{ok, match_any, [], #{}, [<<"cowboy">>, <<"bugs">>], undefined}},
 		{<<"www.ninenines.eu">>, <<"/pathinfo/is/next">>,
-			{ok, match_path, [], [], undefined, []}},
+			{ok, match_path, [], #{}, undefined, []}},
 		{<<"www.ninenines.eu">>, <<"/pathinfo/is/next/path_info">>,
-			{ok, match_path, [], [], undefined, [<<"path_info">>]}},
+			{ok, match_path, [], #{}, undefined, [<<"path_info">>]}},
 		{<<"www.ninenines.eu">>, <<"/pathinfo/is/next/foo/bar">>,
-			{ok, match_path, [], [], undefined, [<<"foo">>, <<"bar">>]}},
-		% Cyrillic from a latin1 encoded file.
-		{<<209,129,208,176,208,185,209,130,46,209,128,209,132>>,
-			<<47,208,191,209,131,209,130,209,140,47,208,180,208,190,208,188,208,190,208,185>>,
-			{ok, match_path, [], [], undefined, [<<208,180,208,190,208,188,208,190,208,185>>]}}
+			{ok, match_path, [], #{}, undefined, [<<"foo">>, <<"bar">>]}}
 	],
 	[{lists:flatten(io_lib:format("~p, ~p", [H, P])), fun() ->
 		R = match(Dispatch, H, P)
@@ -552,16 +545,20 @@ match_info_test_() ->
 match_constraints_test() ->
 	Dispatch = [{'_', [],
 		[{[<<"path">>, value], [{value, int}], match, []}]}],
-	{ok, _, [], [{value, 123}], _, _} = match(Dispatch,
+	{ok, _, [], #{value := 123}, _, _} = match(Dispatch,
 		<<"ninenines.eu">>, <<"/path/123">>),
-	{ok, _, [], [{value, 123}], _, _} = match(Dispatch,
+	{ok, _, [], #{value := 123}, _, _} = match(Dispatch,
 		<<"ninenines.eu">>, <<"/path/123/">>),
 	{error, notfound, path} = match(Dispatch,
 		<<"ninenines.eu">>, <<"/path/NaN/">>),
 	Dispatch2 = [{'_', [], [{[<<"path">>, username],
-		[{username, fun(Value) -> Value =:= cowboy_bstr:to_lower(Value) end}],
+		[{username, fun(_, Value) ->
+			case cowboy_bstr:to_lower(Value) of
+				Value -> {ok, Value};
+				_ -> {error, not_lowercase}
+			end end}],
 		match, []}]}],
-	{ok, _, [], [{username, <<"essen">>}], _, _} = match(Dispatch2,
+	{ok, _, [], #{username := <<"essen">>}, _, _} = match(Dispatch2,
 		<<"ninenines.eu">>, <<"/path/essen">>),
 	{error, notfound, path} = match(Dispatch2,
 		<<"ninenines.eu">>, <<"/path/ESSEN">>),
@@ -569,20 +566,20 @@ match_constraints_test() ->
 
 match_same_bindings_test() ->
 	Dispatch = [{[same, same], [], [{'_', [], match, []}]}],
-	{ok, _, [], [{same, <<"eu">>}], _, _} = match(Dispatch,
+	{ok, _, [], #{same := <<"eu">>}, _, _} = match(Dispatch,
 		<<"eu.eu">>, <<"/">>),
 	{error, notfound, host} = match(Dispatch,
 		<<"ninenines.eu">>, <<"/">>),
 	Dispatch2 = [{[<<"eu">>, <<"ninenines">>, user], [],
 		[{[<<"path">>, user], [], match, []}]}],
-	{ok, _, [], [{user, <<"essen">>}], _, _} = match(Dispatch2,
+	{ok, _, [], #{user := <<"essen">>}, _, _} = match(Dispatch2,
 		<<"essen.ninenines.eu">>, <<"/path/essen">>),
-	{ok, _, [], [{user, <<"essen">>}], _, _} = match(Dispatch2,
+	{ok, _, [], #{user := <<"essen">>}, _, _} = match(Dispatch2,
 		<<"essen.ninenines.eu">>, <<"/path/essen/">>),
 	{error, notfound, path} = match(Dispatch2,
 		<<"essen.ninenines.eu">>, <<"/path/notessen">>),
 	Dispatch3 = [{'_', [], [{[same, same], [], match, []}]}],
-	{ok, _, [], [{same, <<"path">>}], _, _} = match(Dispatch3,
+	{ok, _, [], #{same := <<"path">>}, _, _} = match(Dispatch3,
 		<<"ninenines.eu">>, <<"/path/path">>),
 	{error, notfound, path} = match(Dispatch3,
 		<<"ninenines.eu">>, <<"/path/to">>),

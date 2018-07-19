@@ -11,10 +11,12 @@
 
 init(Req, _) ->
 	erlang:send_after(200, self(), timeout),
-	{cowboy_loop, Req, 2, 5000, hibernate}.
+	{cowboy_loop, Req, 2, hibernate}.
 
 info(timeout, Req, 0) ->
-	{stop, cowboy_req:reply(102, Req), 0};
+	%% Send an unused status code to make sure there's no
+	%% conflict with whatever Cowboy may send itself.
+	{stop, cowboy_req:reply(<<"299 OK!">>, Req), 0};
 info(timeout, Req, Count) ->
 	erlang:send_after(200, self(), timeout),
 	{ok, Req, Count - 1, hibernate}.

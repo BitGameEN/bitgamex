@@ -1,4 +1,4 @@
-%% Copyright (c) 2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2015-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +20,7 @@
 
 -export([init/0]).
 -export([init/1]).
+-export([set_max_size/2]).
 
 -export([decode/1]).
 -export([decode/2]).
@@ -32,7 +33,8 @@
 -record(state, {
 	size = 0 :: non_neg_integer(),
 	max_size = 4096 :: non_neg_integer(),
-	dyn_table = [] :: queue:queue({binary(), binary()})
+	configured_max_size = 4096 :: non_neg_integer(),
+	dyn_table = [] :: [{pos_integer(), {binary(), binary()}}]
 }).
 
 -opaque state() :: #state{}.
@@ -42,7 +44,7 @@
 -export_type([opts/0]).
 
 -ifdef(TEST).
--include_lib("triq/include/triq.hrl").
+-include_lib("proper/include/proper.hrl").
 -endif.
 
 %% State initialization.
@@ -53,7 +55,24 @@ init() ->
 
 -spec init(non_neg_integer()) -> state().
 init(MaxSize) ->
-	#state{max_size=MaxSize}.
+	#state{max_size=MaxSize, configured_max_size=MaxSize}.
+
+%% Update the configured max size.
+%%
+%% When decoding, the local endpoint also needs to send a SETTINGS
+%% frame with this value and it is then up to the remote endpoint
+%% to decide what actual limit it will use. The actual limit is
+%% signaled via dynamic table size updates in the encoded data.
+%%
+%% When encoding, the local endpoint will call this function after
+%% receiving a SETTINGS frame with this value. The encoder will
+%% then use this value as the new max after signaling via a dynamic
+%% table size update. The value given as argument may be lower
+%% than the one received in the SETTINGS.
+
+-spec set_max_size(non_neg_integer(), State) -> State when State::state().
+set_max_size(MaxSize, State) ->
+	State#state{configured_max_size=MaxSize}.
 
 %% Decoding.
 
@@ -66,6 +85,14 @@ decode(Data, State) ->
 	decode(Data, State, #{}).
 
 -spec decode(binary(), State, opts()) -> {cow_http:headers(), State} when State::state().
+%% Dynamic table size update is only allowed at the beginning of a HEADERS block.
+decode(<< 0:2, 1:1, Rest/bits >>, State=#state{configured_max_size=ConfigMaxSize}, Opts) ->
+	{MaxSize, Rest2} = dec_int5(Rest),
+	if
+		MaxSize =< ConfigMaxSize ->
+			State2 = table_update_size(MaxSize, State),
+			decode(Rest2, State2, Opts)
+	end;
 decode(Data, State, Opts) ->
 	decode(Data, State, Opts, []).
 
@@ -93,10 +120,7 @@ decode(<< 0:3, 1:1, 0:4, Rest/bits >>, State, Opts, Acc) ->
 %% Literal header field never indexed: indexed name.
 %% @todo Keep track of "never indexed" headers.
 decode(<< 0:3, 1:1, Rest/bits >>, State, Opts, Acc) ->
-	dec_lit_no_index_indexed_name(Rest, State, Opts, Acc);
-%% Dynamic table size update.
-decode(<< 0:2, 1:1, Rest/bits >>, State, Opts, Acc) ->
-	dec_table_size_update(Rest, State, Opts, Acc).
+	dec_lit_no_index_indexed_name(Rest, State, Opts, Acc).
 
 %% Indexed header field representation.
 
@@ -137,13 +161,6 @@ dec_lit_no_index(Rest, State, Opts, Acc, Name) ->
 	decode(Rest2, State, Opts, [{Name, Value}|Acc]).
 
 %% @todo Literal header field never indexed.
-
-%% Dynamic table size update.
-
-dec_table_size_update(Rest, State, Opts, Acc) ->
-	{MaxSize, Rest2} = dec_int5(Rest),
-	State2 = table_update_size(MaxSize, State),
-	decode(Rest2, State2, Opts, Acc).
 
 %% Decode an integer.
 
@@ -523,7 +540,7 @@ resp_decode_test() ->
 		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
 		{<<"location">>, <<"https://www.example.com">>}
 	],
-	#state{size=180, dyn_table=[
+	#state{size=222, dyn_table=[
 		{42,{<<":status">>, <<"307">>}},
 		{63,{<<"location">>, <<"https://www.example.com">>}},
 		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
@@ -539,26 +556,183 @@ resp_decode_test() ->
 		{<<"content-encoding">>, <<"gzip">>},
 		{<<"set-cookie">>, <<"foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1">>}
 	],
-	#state{size=117, dyn_table=[
+	#state{size=215, dyn_table=[
 		{98,{<<"set-cookie">>, <<"foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1">>}},
 		{52,{<<"content-encoding">>, <<"gzip">>}},
 		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:22 GMT">>}}]} = State3,
+	ok.
+
+table_update_decode_test() ->
+	%% Use a max_size of 256 to trigger header evictions
+	%% when the code is not updating the max size.
+	State0 = init(256),
+	%% First response (raw then huffman).
+	{Headers1, State1} = decode(<< 16#4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d:560 >>, State0),
+	{Headers1, State1} = decode(<< 16#488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3:432 >>, State0),
+	Headers1 = [
+		{<<":status">>, <<"302">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State1,
+	%% Set a new configured max_size to avoid header evictions.
+	State2 = set_max_size(512, State1),
+	%% Second response with the table size update (raw then huffman).
+	MaxSize = enc_big_int(512 - 31, []),
+	{Headers2, State3} = decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4803333037c1c0bf:64>>]),
+		State2),
+	{Headers2, State3} = decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4883640effc1c0bf:64>>]),
+		State2),
+	Headers2 = [
+		{<<":status">>, <<"307">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=264, configured_max_size=512, dyn_table=[
+		{42,{<<":status">>, <<"307">>}},
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State3,
+	ok.
+
+table_update_decode_smaller_test() ->
+	%% Use a max_size of 256 to trigger header evictions
+	%% when the code is not updating the max size.
+	State0 = init(256),
+	%% First response (raw then huffman).
+	{Headers1, State1} = decode(<< 16#4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d:560 >>, State0),
+	{Headers1, State1} = decode(<< 16#488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3:432 >>, State0),
+	Headers1 = [
+		{<<":status">>, <<"302">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State1,
+	%% Set a new configured max_size to avoid header evictions.
+	State2 = set_max_size(512, State1),
+	%% Second response with the table size update smaller than the limit (raw then huffman).
+	MaxSize = enc_big_int(400 - 31, []),
+	{Headers2, State3} = decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4803333037c1c0bf:64>>]),
+		State2),
+	{Headers2, State3} = decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4883640effc1c0bf:64>>]),
+		State2),
+	Headers2 = [
+		{<<":status">>, <<"307">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=264, configured_max_size=512, dyn_table=[
+		{42,{<<":status">>, <<"307">>}},
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State3,
+	ok.
+
+table_update_decode_too_large_test() ->
+	%% Use a max_size of 256 to trigger header evictions
+	%% when the code is not updating the max size.
+	State0 = init(256),
+	%% First response (raw then huffman).
+	{Headers1, State1} = decode(<< 16#4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d:560 >>, State0),
+	{Headers1, State1} = decode(<< 16#488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3:432 >>, State0),
+	Headers1 = [
+		{<<":status">>, <<"302">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State1,
+	%% Set a new configured max_size to avoid header evictions.
+	State2 = set_max_size(512, State1),
+	%% Second response with the table size update (raw then huffman).
+	MaxSize = enc_big_int(1024 - 31, []),
+	{'EXIT', _} = (catch decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4803333037c1c0bf:64>>]),
+		State2)),
+	{'EXIT', _} = (catch decode(
+		iolist_to_binary([<< 2#00111111>>, MaxSize, <<16#4883640effc1c0bf:64>>]),
+		State2)),
+	ok.
+
+table_update_decode_zero_test() ->
+	State0 = init(256),
+	%% First response (raw then huffman).
+	{Headers1, State1} = decode(<< 16#4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d:560 >>, State0),
+	{Headers1, State1} = decode(<< 16#488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3:432 >>, State0),
+	Headers1 = [
+		{<<":status">>, <<"302">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State1,
+	%% Set a new configured max_size to avoid header evictions.
+	State2 = set_max_size(512, State1),
+	%% Second response with the table size update (raw then huffman).
+	%% We set the table size to 0 to evict all values before setting
+	%% it to 512 so we only get the second request indexed.
+	MaxSize = enc_big_int(512 - 31, []),
+	{Headers1, State3} = decode(iolist_to_binary([
+		<<2#00100000, 2#00111111>>, MaxSize,
+		<<16#4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d:560>>]),
+		State2),
+	{Headers1, State3} = decode(iolist_to_binary([
+		<<2#00100000, 2#00111111>>, MaxSize,
+		<<16#488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3:432>>]),
+		State2),
+	#state{size=222, configured_max_size=512, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = State3,
 	ok.
 -endif.
 
 %% Encoding.
 
--spec encode(cow_http:headers()) -> iodata().
+-spec encode(cow_http:headers()) -> {iodata(), state()}.
 encode(Headers) ->
 	encode(Headers, init(), #{}, []).
 
--spec encode(cow_http:headers(), State) -> iodata() when State::state().
-encode(Headers, State) ->
-	encode(Headers, State, #{}, []).
+-spec encode(cow_http:headers(), State) -> {iodata(), State} when State::state().
+encode(Headers, State=#state{max_size=MaxSize, configured_max_size=MaxSize}) ->
+	encode(Headers, State, #{}, []);
+encode(Headers, State0=#state{configured_max_size=MaxSize}) ->
+	{Data, State} = encode(Headers, State0#state{max_size=MaxSize}, #{}, []),
+	{[enc_int5(MaxSize, 2#001), Data], State}.
 
--spec encode(cow_http:headers(), State, opts()) -> iodata() when State::state().
-encode(Headers, State, Opts) ->
-	encode(Headers, State, Opts, []).
+-spec encode(cow_http:headers(), State, opts()) -> {iodata(), State} when State::state().
+encode(Headers, State=#state{max_size=MaxSize, configured_max_size=MaxSize}, Opts) ->
+	encode(Headers, State, Opts, []);
+encode(Headers, State0=#state{configured_max_size=MaxSize}, Opts) ->
+	{Data, State} = encode(Headers, State0#state{max_size=MaxSize}, Opts, []),
+	{[enc_int5(MaxSize, 2#001), Data], State}.
 
 %% @todo Handle cases where no/never indexing is expected.
 encode([], State, _, Acc) ->
@@ -581,6 +755,11 @@ encode([_Header0 = {Name, Value0}|Tail], State, Opts, Acc) ->
 	end.
 
 %% Encode an integer.
+
+enc_int5(Int, Prefix) when Int < 31 ->
+	<< Prefix:3, Int:5 >>;
+enc_int5(Int, Prefix) ->
+	[<< Prefix:3, 2#11111:5 >>|enc_big_int(Int - 31, [])].
 
 enc_int6(Int, Prefix) when Int < 63 ->
 	<< Prefix:2, Int:6 >>;
@@ -953,7 +1132,7 @@ resp_encode_test() ->
 	<< 16#4803333037c1c0bf:64 >> = iolist_to_binary(Raw2),
 	{Huff2, State2} = encode(Headers2, State1),
 	<< 16#4883640effc1c0bf:64 >> = iolist_to_binary(Huff2),
-	#state{size=180, dyn_table=[
+	#state{size=222, dyn_table=[
 		{42,{<<":status">>, <<"307">>}},
 		{63,{<<"location">>, <<"https://www.example.com">>}},
 		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
@@ -971,10 +1150,60 @@ resp_encode_test() ->
 	<< 16#88c1611d4d6f6e2c203231204f637420323031332032303a31333a323220474d54c05a04677a69707738666f6f3d4153444a4b48514b425a584f5157454f50495541585157454f49553b206d61782d6167653d333630303b2076657273696f6e3d31:784 >> = iolist_to_binary(Raw3),
 	{Huff3, State3} = encode(Headers3, State2),
 	<< 16#88c16196d07abe941054d444a8200595040b8166e084a62d1bffc05a839bd9ab77ad94e7821dd7f2e6c7b335dfdfcd5b3960d5af27087f3672c1ab270fb5291f9587316065c003ed4ee5b1063d5007:632 >> = iolist_to_binary(Huff3),
-	#state{size=117, dyn_table=[
+	#state{size=215, dyn_table=[
 		{98,{<<"set-cookie">>, <<"foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1">>}},
 		{52,{<<"content-encoding">>, <<"gzip">>}},
 		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:22 GMT">>}}]} = State3,
+	ok.
+
+%% This test assumes that table updates work correctly when decoding.
+table_update_encode_test() ->
+	%% Use a max_size of 256 to trigger header evictions
+	%% when the code is not updating the max size.
+	DecState0 = EncState0 = init(256),
+	%% First response.
+	Headers1 = [
+		{<<":status">>, <<"302">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	{Encoded1, EncState1} = encode(Headers1, EncState0),
+	{Headers1, DecState1} = decode(iolist_to_binary(Encoded1), DecState0),
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = DecState1,
+	#state{size=222, configured_max_size=256, dyn_table=[
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = EncState1,
+	%% Set a new configured max_size to avoid header evictions.
+	DecState2 = set_max_size(512, DecState1),
+	EncState2 = set_max_size(512, EncState1),
+	%% Second response.
+	Headers2 = [
+		{<<":status">>, <<"307">>},
+		{<<"cache-control">>, <<"private">>},
+		{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>},
+		{<<"location">>, <<"https://www.example.com">>}
+	],
+	{Encoded2, EncState3} = encode(Headers2, EncState2),
+	{Headers2, DecState3} = decode(iolist_to_binary(Encoded2), DecState2),
+	#state{size=264, max_size=512, dyn_table=[
+		{42,{<<":status">>, <<"307">>}},
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = DecState3,
+	#state{size=264, max_size=512, dyn_table=[
+		{42,{<<":status">>, <<"307">>}},
+		{63,{<<"location">>, <<"https://www.example.com">>}},
+		{65,{<<"date">>, <<"Mon, 21 Oct 2013 20:13:21 GMT">>}},
+		{52,{<<"cache-control">>, <<"private">>}},
+		{42,{<<":status">>, <<"302">>}}]} = EncState3,
 	ok.
 
 encode_iolist_test() ->
@@ -1264,14 +1493,13 @@ table_get_name(Index, #state{dyn_table=DynamicTable}) ->
 
 table_insert(Entry = {Name, Value}, State=#state{size=Size, max_size=MaxSize, dyn_table=DynamicTable}) ->
 	EntrySize = byte_size(Name) + byte_size(Value) + 32,
-	Size2 = Size + EntrySize,
-	{DynamicTable2, Size3} = if
+	{DynamicTable2, Size2} = if
 		Size + EntrySize > MaxSize ->
 			table_resize(DynamicTable, MaxSize - EntrySize, 0, []);
 		true ->
-			{DynamicTable, Size2}
+			{DynamicTable, Size}
 	end,
-	State#state{size=Size3, dyn_table=[{EntrySize, Entry}|DynamicTable2]}.
+	State#state{size=Size2 + EntrySize, dyn_table=[{EntrySize, Entry}|DynamicTable2]}.
 
 table_resize([], _, Size, Acc) ->
 	{lists:reverse(Acc), Size};
@@ -1284,9 +1512,9 @@ table_update_size(0, State) ->
 	State#state{size=0, max_size=0, dyn_table=[]};
 table_update_size(MaxSize, State=#state{max_size=MaxSize}) ->
 	State;
-table_update_size(MaxSize, #state{dyn_table=DynTable}) ->
+table_update_size(MaxSize, State=#state{dyn_table=DynTable}) ->
 	{DynTable2, Size} = table_resize(DynTable, MaxSize, 0, []),
-	#state{size=Size, max_size=MaxSize, dyn_table=DynTable2}.
+	State#state{size=Size, max_size=MaxSize, dyn_table=DynTable2}.
 
 -ifdef(TEST).
 prop_str_raw() ->

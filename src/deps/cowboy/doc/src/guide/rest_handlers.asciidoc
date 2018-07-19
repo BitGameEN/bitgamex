@@ -15,8 +15,8 @@ must return a `cowboy_rest` tuple.
 
 [source,erlang]
 ----
-init(Req, _Opts) ->
-    {cowboy_rest, Req, #state{}}.
+init(Req, State) ->
+    {cowboy_rest, Req, State}.
 ----
 
 Cowboy will then switch to the REST protocol and start executing
@@ -43,8 +43,12 @@ you need.
 All callbacks take two arguments, the Req object and the State,
 and return a three-element tuple of the form `{Value, Req, State}`.
 
-All callbacks can also return `{stop, Req, State}` to stop execution
-of the request.
+Nearly all callbacks can also return `{stop, Req, State}` to
+stop execution of the request, and
+`{{switch_handler, Module}, Req, State}` or
+`{{switch_handler, Module, Opts}, Req, State}` to switch to
+a different handler type. The exceptions are `expires`
+`generate_etag`, `last_modified` and `variances`.
 
 The following table summarizes the callbacks and their default values.
 If the callback isn't defined, then the default value will be used.
@@ -62,7 +66,8 @@ if it is undefined, moving directly to the next step. Similarly,
 | allow_missing_post     | `true`
 | charsets_provided      | skip
 | content_types_accepted | none
-| content_types_provided | `$$[{{<<"text">>, <<"html">>, '*'}, to_html}]$$`
+// @todo Space required for the time being: https://github.com/spf13/hugo/issues/2398
+| content_types_provided | `[{{ <<"text">>, <<"html">>, '*'}, to_html}]`
 | delete_completed       | `true`
 | delete_resource        | `false`
 | expires                | `undefined`
@@ -100,13 +105,13 @@ and in the second case that we send one as HTML.
 
 === Meta data
 
-Cowboy will set informative meta values at various points of the
-execution. You can retrieve them using `cowboy_req:meta/{2,3}`.
-The values are defined in the following table.
+Cowboy will set informative values to the Req object at various
+points of the execution. You can retrieve them by matching the
+Req object directly. The values are defined in the following table:
 
 [cols="<,<",options="header"]
 |===
-| Meta key   | Details
+| Key        | Details
 | media_type | The content-type negotiated for the response entity.
 | language   | The language negotiated for the response entity.
 | charset    | The charset negotiated for the response entity.

@@ -1,4 +1,4 @@
-%% Copyright (c) 2011-2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2011-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -19,9 +19,10 @@
 -export([secure/0]).
 -export([messages/0]).
 -export([listen/1]).
--export([listen_options/0]).
+-export([disallowed_listen_options/0]).
 -export([accept/2]).
 -export([accept_ack/2]).
+-export([handshake/3]).
 -export([connect/3]).
 -export([connect/4]).
 -export([recv/3]).
@@ -30,6 +31,9 @@
 -export([sendfile/4]).
 -export([sendfile/5]).
 -export([setopts/2]).
+-export([getopts/2]).
+-export([getstat/1]).
+-export([getstat/2]).
 -export([controlling_process/2]).
 -export([peername/1]).
 -export([sockname/1]).
@@ -47,6 +51,7 @@
 	| inet
 	| inet6
 	| {ip, inet:ip_address()}
+	| {ipv6_v6only, boolean()}
 	| {keepalive, boolean()}
 	| {linger, {boolean(), non_neg_integer()}}
 	| {low_msgq_watermark, non_neg_integer()}
@@ -82,19 +87,13 @@ listen(Opts) ->
 	%% We set the port to 0 because it is given in the Opts directly.
 	%% The port in the options takes precedence over the one in the
 	%% first argument.
-	gen_tcp:listen(0, ranch:filter_options(Opts5, listen_options(),
+	gen_tcp:listen(0, ranch:filter_options(Opts5, disallowed_listen_options(),
 		[binary, {active, false}, {packet, raw}, {reuseaddr, true}])).
 
-%% 'inet' and 'inet6' are also allowed but they are handled
+%% 'binary' and 'list' are disallowed but they are handled
 %% specifically as they do not have 2-tuple equivalents.
-%%
-%% The 4-tuple 'raw' option is also handled specifically.
-listen_options() ->
-	[backlog, buffer, delay_send, dontroute, exit_on_close, fd,
-		high_msgq_watermark, high_watermark, ip,
-		keepalive, linger, low_msgq_watermark,
-		low_watermark, nodelay, port, priority, recbuf,
-		send_timeout, send_timeout_close, sndbuf, tos].
+disallowed_listen_options() ->
+	[active, header, mode, packet, packet_size, line_delimiter, reuseaddr].
 
 -spec accept(inet:socket(), timeout())
 	-> {ok, inet:socket()} | {error, closed | timeout | atom()}.
@@ -102,8 +101,13 @@ accept(LSocket, Timeout) ->
 	gen_tcp:accept(LSocket, Timeout).
 
 -spec accept_ack(inet:socket(), timeout()) -> ok.
-accept_ack(_, _) ->
+accept_ack(CSocket, Timeout) ->
+	{ok, _} = handshake(CSocket, [], Timeout),
 	ok.
+
+-spec handshake(inet:socket(), opts(), timeout()) -> {ok, inet:socket()}.
+handshake(CSocket, _, _) ->
+	{ok, CSocket}.
 
 %% @todo Probably filter Opts?
 -spec connect(inet:ip_address() | inet:hostname(),
@@ -178,6 +182,18 @@ sendfile(Socket, RawFile, Offset, Bytes, Opts) ->
 -spec setopts(inet:socket(), list()) -> ok | {error, atom()}.
 setopts(Socket, Opts) ->
 	inet:setopts(Socket, Opts).
+
+-spec getopts(inet:socket(), [atom()]) -> {ok, list()} | {error, atom()}.
+getopts(Socket, Opts) ->
+        inet:getopts(Socket, Opts).
+
+-spec getstat(inet:socket()) -> {ok, list()} | {error, atom()}.
+getstat(Socket) ->
+        inet:getstat(Socket).
+
+-spec getstat(inet:socket(), [atom()]) -> {ok, list()} | {error, atom()}.
+getstat(Socket, OptionNames) ->
+        inet:getstat(Socket, OptionNames).
 
 -spec controlling_process(inet:socket(), pid())
 	-> ok | {error, closed | not_owner | atom()}.

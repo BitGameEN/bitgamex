@@ -1,4 +1,4 @@
-%% Copyright (c) 2011-2014, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2011-2017, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -17,15 +17,21 @@
 -module(cowboy_rest).
 -behaviour(cowboy_sub_protocol).
 
--export([upgrade/6]).
+-ifdef(OTP_RELEASE).
+-compile({nowarn_deprecated_function, [{erlang, get_stacktrace, 0}]}).
+-endif.
+
+-export([upgrade/4]).
+-export([upgrade/5]).
+
+-type switch_handler() :: {switch_handler, module()}
+	| {switch_handler, module(), any()}.
 
 %% Common handler callbacks.
 
 -callback init(Req, any())
 	-> {ok | module(), Req, any()}
-	| {module(), Req, any(), hibernate}
-	| {module(), Req, any(), timeout()}
-	| {module(), Req, any(), timeout(), hibernate}
+	| {module(), Req, any(), any()}
 	when Req::cowboy_req:req().
 
 -callback terminate(any(), cowboy_req:req(), any()) -> ok.
@@ -36,162 +42,181 @@
 -callback allowed_methods(Req, State)
 	-> {[binary()], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([allowed_methods/2]).
 
 -callback allow_missing_post(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([allow_missing_post/2]).
 
 -callback charsets_provided(Req, State)
 	-> {[binary()], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([charsets_provided/2]).
 
 -callback content_types_accepted(Req, State)
 	-> {[{binary() | {binary(), binary(), '*' | [{binary(), binary()}]}, atom()}], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([content_types_accepted/2]).
 
 -callback content_types_provided(Req, State)
 	-> {[{binary() | {binary(), binary(), '*' | [{binary(), binary()}]}, atom()}], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([content_types_provided/2]).
 
 -callback delete_completed(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([delete_completed/2]).
 
 -callback delete_resource(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([delete_resource/2]).
 
 -callback expires(Req, State)
 	-> {calendar:datetime() | binary() | undefined, Req, State}
-	| {stop, Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([expires/2]).
 
 -callback forbidden(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([forbidden/2]).
 
 -callback generate_etag(Req, State)
 	-> {binary() | {weak | strong, binary()}, Req, State}
-	| {stop, Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([generate_etag/2]).
 
 -callback is_authorized(Req, State)
 	-> {true | {false, iodata()}, Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([is_authorized/2]).
 
 -callback is_conflict(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([is_conflict/2]).
 
 -callback known_methods(Req, State)
 	-> {[binary()], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([known_methods/2]).
 
 -callback languages_provided(Req, State)
 	-> {[binary()], Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([languages_provided/2]).
 
 -callback last_modified(Req, State)
 	-> {calendar:datetime(), Req, State}
-	| {stop, Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([last_modified/2]).
 
 -callback malformed_request(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([malformed_request/2]).
 
 -callback moved_permanently(Req, State)
 	-> {{true, iodata()} | false, Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([moved_permanently/2]).
 
 -callback moved_temporarily(Req, State)
 	-> {{true, iodata()} | false, Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([moved_temporarily/2]).
 
 -callback multiple_choices(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([multiple_choices/2]).
 
 -callback options(Req, State)
 	-> {ok, Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([options/2]).
 
 -callback previously_existed(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([previously_existed/2]).
 
 -callback resource_exists(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([resource_exists/2]).
 
 -callback service_available(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([service_available/2]).
 
 -callback uri_too_long(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([uri_too_long/2]).
 
 -callback valid_content_headers(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([valid_content_headers/2]).
 
 -callback valid_entity_length(Req, State)
 	-> {boolean(), Req, State}
 	| {stop, Req, State}
+	| {switch_handler(), Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([valid_entity_length/2]).
 
 -callback variances(Req, State)
 	-> {[binary()], Req, State}
-	| {stop, Req, State}
 	when Req::cowboy_req:req(), State::any().
 -optional_callbacks([variances/2]).
 
@@ -205,7 +230,7 @@
 	handler_state :: any(),
 
 	%% Allowed methods. Only used for OPTIONS requests.
-	allowed_methods :: [binary()],
+	allowed_methods :: [binary()] | undefined,
 
 	%% Media type.
 	content_types_p = [] ::
@@ -232,13 +257,25 @@
 	expires :: undefined | no_call | calendar:datetime() | binary()
 }).
 
--spec upgrade(Req, Env, module(), any(), infinity, run)
+-spec upgrade(Req, Env, module(), any())
 	-> {ok, Req, Env} when Req::cowboy_req:req(), Env::cowboy_middleware:env().
-upgrade(Req0, Env, Handler, HandlerState, infinity, run) ->
+upgrade(Req0, Env, Handler, HandlerState0) ->
 	Method = cowboy_req:method(Req0),
-	{ok, Req, Result} = service_available(Req0, #state{method=Method,
-		handler=Handler, handler_state=HandlerState}),
-	{ok, Req, [{result, Result}|Env]}.
+	case service_available(Req0, #state{method=Method,
+			handler=Handler, handler_state=HandlerState0}) of
+		{ok, Req, Result} ->
+			{ok, Req, Env#{result => Result}};
+		{Mod, Req, HandlerState} ->
+			Mod:upgrade(Req, Env, Handler, HandlerState);
+		{Mod, Req, HandlerState, Opts} ->
+			Mod:upgrade(Req, Env, Handler, HandlerState, Opts)
+	end.
+
+-spec upgrade(Req, Env, module(), any(), any())
+	-> {ok, Req, Env} when Req::cowboy_req:req(), Env::cowboy_middleware:env().
+%% cowboy_rest takes no options.
+upgrade(Req, Env, Handler, HandlerState, _Opts) ->
+	upgrade(Req, Env, Handler, HandlerState).
 
 service_available(Req, State) ->
 	expect(Req, State, service_available, true, fun known_methods/2, 503).
@@ -255,6 +292,8 @@ known_methods(Req, State=#state{method=Method}) ->
 			next(Req, State, 501);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{List, Req2, HandlerState} ->
 			State2 = State#state{handler_state=HandlerState},
 			case lists:member(Method, List) of
@@ -280,6 +319,8 @@ allowed_methods(Req, State=#state{method=Method}) ->
 				[<<"HEAD">>, <<"GET">>, <<"OPTIONS">>]);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{List, Req2, HandlerState} ->
 			State2 = State#state{handler_state=HandlerState},
 			case lists:member(Method, List) of
@@ -311,6 +352,8 @@ is_authorized(Req, State) ->
 			forbidden(Req, State);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{true, Req2, HandlerState} ->
 			forbidden(Req2, State#state{handler_state=HandlerState});
 		{{false, AuthHead}, Req2, HandlerState} ->
@@ -341,6 +384,8 @@ options(Req, State=#state{allowed_methods=Methods, method= <<"OPTIONS">>}) ->
 				= << << ", ", M/binary >> || M <- Methods >>,
 			Req2 = cowboy_req:set_resp_header(<<"allow">>, Allow, Req),
 			respond(Req2, State, 200);
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
 		{ok, Req2, HandlerState} ->
@@ -382,6 +427,8 @@ content_types_provided(Req, State) ->
 			end;
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{[], Req2, HandlerState} ->
 			not_acceptable(Req2, State#state{handler_state=HandlerState});
 		{CTP, Req2, HandlerState} ->
@@ -484,6 +531,8 @@ languages_provided(Req, State) ->
 			charsets_provided(Req, State);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{[], Req2, HandlerState} ->
 			not_acceptable(Req2, State#state{handler_state=HandlerState});
 		{LP, Req2, HandlerState} ->
@@ -544,6 +593,8 @@ charsets_provided(Req, State) ->
 			set_content_type(Req, State);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{[], Req2, HandlerState} ->
 			not_acceptable(Req2, State#state{handler_state=HandlerState});
 		{CP, Req2, HandlerState} ->
@@ -654,7 +705,7 @@ variances(Req, State=#state{content_types_p=CTP,
 					resource_exists(Req3, State2)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, variances)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 variances(Req, State, Variances) ->
@@ -693,7 +744,7 @@ if_match(Req, State, EtagsList) ->
 				false -> precondition_failed(Req2, State2)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, generate_etag)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 if_match_must_not_exist(Req, State) ->
@@ -721,7 +772,7 @@ if_unmodified_since(Req, State, IfUnmodifiedSince) ->
 				false -> if_none_match_exists(Req2, State2)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, last_modified)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 if_none_match_exists(Req, State) ->
@@ -747,7 +798,7 @@ if_none_match(Req, State, EtagsList) ->
 					end
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, generate_etag)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 %% Weak Etag comparison: only check the opaque tag.
@@ -782,7 +833,7 @@ if_modified_since_now(Req, State, IfModifiedSince) ->
 
 if_modified_since(Req, State, IfModifiedSince) ->
 	try last_modified(Req, State) of
-		{no_call, Req2, State2} ->
+		{undefined, Req2, State2} ->
 			method(Req2, State2);
 		{LastModified, Req2, State2} ->
 			case LastModified > IfModifiedSince of
@@ -790,7 +841,7 @@ if_modified_since(Req, State, IfModifiedSince) ->
 				false -> not_modified(Req2, State2)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, last_modified)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 not_modified(Req, State) ->
@@ -801,10 +852,10 @@ not_modified(Req, State) ->
 				{Req4, State3} ->
 					respond(Req4, State3, 304)
 			catch Class:Reason ->
-				error_terminate(Req, State2, Class, Reason, expires)
+				error_terminate(Req, State2, Class, Reason)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, generate_etag)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 precondition_failed(Req, State) ->
@@ -827,6 +878,8 @@ moved_permanently(Req, State, OnFalse) ->
 			OnFalse(Req2, State#state{handler_state=HandlerState});
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		no_call ->
 			OnFalse(Req, State)
 	end.
@@ -848,6 +901,8 @@ moved_temporarily(Req, State) ->
 			is_post_to_missing_resource(Req2, State#state{handler_state=HandlerState}, 410);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		no_call ->
 			is_post_to_missing_resource(Req, State, 410)
 	end.
@@ -898,6 +953,8 @@ accept_resource(Req, State) ->
 			respond(Req, State, 415);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{CTA, Req2, HandlerState} ->
 			CTA2 = [normalize_content_types(P) || P <- CTA],
 			State2 = State#state{handler_state=HandlerState},
@@ -933,6 +990,8 @@ process_content_type(Req, State=#state{method=Method, exists=Exists}, Fun) ->
 	try case call(Req, State, Fun) of
 		{stop, Req2, HandlerState2} ->
 			terminate(Req2, State#state{handler_state=HandlerState2});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{true, Req2, HandlerState2} when Exists ->
 			State2 = State#state{handler_state=HandlerState2},
 			next(Req2, State2, fun has_resp_body/2);
@@ -951,7 +1010,7 @@ process_content_type(Req, State=#state{method=Method, exists=Exists}, Fun) ->
 				true -> respond(Req3, State2, 201)
 			end
 	end catch Class:Reason = {case_clause, no_call} ->
-		error_terminate(Req, State, Class, Reason, Fun)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 %% If PUT was used then the resource has been created at the current URL.
@@ -978,7 +1037,7 @@ set_resp_body_etag(Req, State) ->
 		{Req2, State2} ->
 			set_resp_body_last_modified(Req2, State2)
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, generate_etag)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 %% Set the Last-Modified header if any for the response provided.
@@ -995,7 +1054,7 @@ set_resp_body_last_modified(Req, State) ->
 					set_resp_body_expires(Req3, State2)
 			end
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, last_modified)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 %% Set the Expires header if any for the response provided.
@@ -1004,7 +1063,7 @@ set_resp_body_expires(Req, State) ->
 		{Req2, State2} ->
 			set_resp_body(Req2, State2)
 	catch Class:Reason ->
-		error_terminate(Req, State, Class, Reason, expires)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 %% Set the response headers and call the callback found using
@@ -1014,21 +1073,14 @@ set_resp_body(Req, State=#state{content_type_a={_, Callback}}) ->
 	try case call(Req, State, Callback) of
 		{stop, Req2, HandlerState2} ->
 			terminate(Req2, State#state{handler_state=HandlerState2});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{Body, Req2, HandlerState2} ->
 			State2 = State#state{handler_state=HandlerState2},
-			Req3 = case Body of
-				{stream, StreamFun} ->
-					cowboy_req:set_resp_body_fun(StreamFun, Req2);
-				{stream, Len, StreamFun} ->
-					cowboy_req:set_resp_body_fun(Len, StreamFun, Req2);
-				{chunked, StreamFun} ->
-					cowboy_req:set_resp_body_fun(chunked, StreamFun, Req2);
-				_ ->
-					cowboy_req:set_resp_body(Body, Req2)
-			end,
+			Req3 = cowboy_req:set_resp_body(Body, Req2),
 			multiple_choices(Req3, State2)
 	end catch Class:Reason = {case_clause, no_call} ->
-		error_terminate(Req, State, Class, Reason, Callback)
+		error_terminate(Req, State, Class, Reason)
 	end.
 
 multiple_choices(Req, State) ->
@@ -1118,6 +1170,8 @@ expect(Req, State, Callback, Expected, OnTrue, OnFalse) ->
 			next(Req, State, OnTrue);
 		{stop, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
+		{Switch, Req2, HandlerState} when element(1, Switch) =:= switch_handler ->
+			switch_handler(Switch, Req2, HandlerState);
 		{Expected, Req2, HandlerState} ->
 			next(Req2, State#state{handler_state=HandlerState}, OnTrue);
 		{_Unexpected, Req2, HandlerState} ->
@@ -1131,7 +1185,7 @@ call(Req, State=#state{handler=Handler, handler_state=HandlerState},
 			try
 				Handler:Callback(Req, HandlerState)
 			catch Class:Reason ->
-				error_terminate(Req, State, Class, Reason, Callback)
+				error_terminate(Req, State, Class, Reason)
 			end;
 		false ->
 			no_call
@@ -1152,20 +1206,15 @@ next(Req, State, StatusCode) when is_integer(StatusCode) ->
 respond(Req, State, StatusCode) ->
 	terminate(cowboy_req:reply(StatusCode, Req), State).
 
--spec error_terminate(cowboy_req:req(), #state{}, atom(), any(), atom()) -> no_return().
-error_terminate(Req, #state{handler=Handler, handler_state=HandlerState},
-		Class, Reason, Callback) ->
-	Stacktrace = erlang:get_stacktrace(),
-	cowboy_req:maybe_reply(Stacktrace, Req),
+switch_handler({switch_handler, Mod}, Req, HandlerState) ->
+	{Mod, Req, HandlerState};
+switch_handler({switch_handler, Mod, Opts}, Req, HandlerState) ->
+	{Mod, Req, HandlerState, Opts}.
+
+-spec error_terminate(cowboy_req:req(), #state{}, atom(), any()) -> no_return().
+error_terminate(Req, #state{handler=Handler, handler_state=HandlerState}, Class, Reason) ->
 	cowboy_handler:terminate({crash, Class, Reason}, Req, HandlerState, Handler),
-	exit({cowboy_handler, [
-		{class, Class},
-		{reason, Reason},
-		{mfa, {Handler, Callback, 2}},
-		{stacktrace, Stacktrace},
-		{req, Req},
-		{state, HandlerState}
-	]}).
+	erlang:raise(Class, Reason, erlang:get_stacktrace()).
 
 terminate(Req, #state{handler=Handler, handler_state=HandlerState}) ->
 	Result = cowboy_handler:terminate(normal, Req, HandlerState, Handler),

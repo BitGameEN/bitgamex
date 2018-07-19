@@ -21,11 +21,9 @@
 %%CALLBACK
 -export([init/2,
   terminate/3,
-  info/3,
-  handle/2,
-  websocket_init/2,
-  websocket_info/3,
-  websocket_handle/3]).
+  websocket_init/1,
+  websocket_info/2,
+  websocket_handle/2]).
 
 
 -record(http_state, {action, config = #config{},
@@ -46,9 +44,9 @@ init(Req, [Config]) ->
   lager:debug("+++++ PathInfo:~p~n", [PathInfo]),
   init_by_method(Method, PathInfo, Config, Req).
 
-websocket_init(Req, State) ->
+websocket_init(State) ->
     self() ! post_init,
-    {ok, Req, State}.
+    {ok, State}.
 
 %%1) http://127.0.0.1:8080/socket.io/1/?t=1436608179209
 init_by_method(_Method, [] = _PathInfo,
@@ -64,8 +62,8 @@ init_by_method(_Method, [] = _PathInfo,
   {ok, Req1, #http_state{action = ?CREATE_SESSION, config = Config}};
 
 %%2) ws://127.0.0.1:8080/socket.io/1/websocket/8080fa8492eb609e79471f1c5e396681 GET
-init_by_method(_Method, [<<"websocket">>, _Sid], Config, Req) ->
-  {cowboy_websocket, Req, {Config}};
+init_by_method(_Method, [<<"websocket">>, Sid], Config, Req) ->
+  {cowboy_websocket, Req, {Config, Sid}};
 
 %%3) ws://127.0.0.1:8080/socket.io/xhr-polling/8080fa8492eb609e79471f1c5e396681 GET
 init_by_method(<<"GET">>, [<<"xhr-polling">>, Sid], Config = #config{protocol = Protocol}, Req) ->
@@ -106,16 +104,6 @@ init_by_method(<<"POST">>, [<<"xhr-polling">>, Sid], Config=#config{protocol = P
 init_by_method(_Method, _PathInfo, Config, Req) ->
   {ok, Req, #http_state{config = Config}}.
 
-%% @todo no useness  del
-info({timeout, TRef, {?MODULE, _Pid}}, Req, HttpState =
-  #http_state{action = ?HEARTBEAT, heartbeat_tref = TRef}) ->
-  lager:error("recon_web_handler1:info~p~n", [timeout]),
-  {loop, Req, HttpState#http_state{heartbeat_tref = undefined}};
-
-info(Info, Req, HttpState) ->
-  lager:error("recon_web_handler:info~p~n", [Info]),
-  {ok, Req, HttpState}.
-
 terminate(_Reason, _Req, _HttpState = #http_state{action = Action}) when
   Action == ?CREATE_SESSION;Action == ?SESSION_IN_USE->
   ok;
@@ -134,84 +122,61 @@ terminate(Reason, _Req, State) ->
   ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% %% Http handlers callbacks
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-handle(Req, HttpState = #http_state{action = ?CREATE_SESSION}) ->
-  {ok, Req, HttpState};
-
-handle(Req, HttpState = #http_state{action = ?SESSION_NOT_FIND}) ->
-  Req1 = cowboy_req:reply(404, #{}, <<>>, Req),
-  {ok, Req1, HttpState};
-
-handle(Req, HttpState = #http_state{action = ?SESSION_IN_USE}) ->
-  Req1 = cowboy_req:reply(404, #{}, <<>>, Req),
-  {ok, Req1, HttpState};
-
-handle(Req, HttpState = #http_state{action = ?OK}) ->
-  Req1 = cowboy_req:reply(200, ?TEXT_HEAD, <<>>, Req),
-  {ok, Req1, HttpState};
-
-handle(Req, HttpState) ->
-  Req1 = cowboy_req:reply(404, #{}, <<>>, Req),
-  {ok, Req1, HttpState}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Websocket handlers callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-websocket_info(post_init, Req, {Config}) ->
-  [<<"websocket">>, Sid] = cowboy_req:path_info(Req),
+websocket_info(post_init, {Config, Sid}) ->
   case recon_web_session:find(Sid) of
     {ok, Pid} ->
       erlang:monitor(process, Pid),
       self() ! {go, Sid},
       erlang:start_timer(Config#config.heartbeat, self(), {?MODULE, Pid}),
-      {ok, Req, {Config, Pid}};
-    {error, not_found} -> {stop, Req, {Config, undefined}}
+      {ok, {Config, Pid}};
+    {error, not_found} -> {stop, {Config, undefined}}
   end;
 
-websocket_info({go, Sid}, Req, {Config, Pid}) ->
+websocket_info({go, Sid}, {Config, Pid}) ->
   case recon_web_session:set_caller_and_pull_msg(Pid, self()) of
-    session_in_use -> {ok, Req, {Config, Pid}};
+    session_in_use -> {ok, {Config, Pid}};
     Messages ->
       notify_when_first_connect(Messages, Pid, Sid),
-      reply_ws_messages(Req, Messages, {Config, Pid})
+      reply_ws_messages(Messages, {Config, Pid})
   end;
 
-websocket_info({timeout, _TRef, {?MODULE, Pid}}, Req, {Config = #config{protocol = Protocol}, Pid}) ->
+websocket_info({timeout, _TRef, {?MODULE, Pid}}, {Config = #config{protocol = Protocol}, Pid}) ->
   recon_web_session:refresh(Pid),
   erlang:start_timer(Config#config.heartbeat, self(), {?MODULE, Pid}),
-  {reply, {text, Protocol:encode(heartbeat)}, Req, {Config, Pid}};
+  {reply, {text, Protocol:encode(heartbeat)}, {Config, Pid}};
 
-websocket_info({message_arrived, Pid}, Req, State) ->
+websocket_info({message_arrived, Pid}, State) ->
   Messages =  recon_web_session:pull_msg_from_session(Pid),
-  reply_ws_messages(Req, Messages, State);
+  reply_ws_messages(Messages, State);
 
 %%heartbeat
-websocket_info({timeout, _TRef, {?MODULE, Pid}}, Req, State =
+websocket_info({timeout, _TRef, {?MODULE, Pid}}, State =
   {#config{protocol = Protocol, heartbeat = Heartbeat}, Pid}) ->
   recon_web_session:refresh(Pid),
   erlang:start_timer(Heartbeat, self(), {?MODULE, Pid}),
   Packet = Protocol:encode(heartbeat),
-  {reply, {text, Packet}, Req, State};
+  {reply, {text, Packet}, State};
 
 %% session process DOWN because we monitor before
-websocket_info({'DOWN', _Ref, process, Pid, _Reason}, Req, State = {_Config, Pid}) ->
-  {stop, Req, State};
+websocket_info({'DOWN', _Ref, process, Pid, _Reason}, State = {_Config, Pid}) ->
+  {stop, State};
 
-websocket_info(Info, Req, State) ->
+websocket_info(Info, State) ->
   lager:info("unknown wesocket_info: ~p~n", [?MODULE, Info]),
-  {ok, Req, State}.
+  {ok, State}.
 
 %% message from client websocket
-websocket_handle({text, Data}, Req, State = {#config{protocol = Protocol}, Pid}) ->
+websocket_handle({text, Data}, State = {#config{protocol = Protocol}, Pid}) ->
   Messages = Protocol:decode(Data),
   lager:debug("from client text~p~n", [Messages]),
   recon_web_session:deliver_msg(Pid, Messages),
-  {ok, Req, State};
+  {ok, State};
 
-websocket_handle(Data, Req, State) ->
+websocket_handle(Data, State) ->
   lager:info("unknown data from client: ~p~n", [Data]),
-  {ok, Req, State}.
+  {ok, State}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% INTERNAL FUNCTION
@@ -229,8 +194,8 @@ notify_when_first_connect(Messages, SessionPid, Sid) ->
     _ -> ok
   end.
 
-reply_ws_messages(Req, Messages, State = {#config{protocol = Protocol}, _Pid}) ->
+reply_ws_messages(Messages, State = {#config{protocol = Protocol}, _Pid}) ->
   case Protocol:encode(Messages) of
-    <<>> -> {ok, Req, State};
-    Packet -> {reply, {text, Packet}, Req, State}
+    <<>> -> {ok, State};
+    Packet -> {reply, {text, Packet}, State}
   end.

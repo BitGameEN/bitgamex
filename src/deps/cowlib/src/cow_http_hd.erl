@@ -1,4 +1,4 @@
-%% Copyright (c) 2014-2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2014-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -135,7 +135,7 @@
 -include("cow_parse.hrl").
 
 -ifdef(TEST).
--include_lib("triq/include/triq.hrl").
+-include_lib("proper/include/proper.hrl").
 
 vector(Min, Max, Dom) -> ?LET(N, choose(Min, Max), vector(N, Dom)).
 small_list(Dom) -> vector(0, 10, Dom).
@@ -162,13 +162,13 @@ token() ->
 		list_to_binary(T)).
 
 abnf_char() ->
-	int(1, 127).
+	integer(1, 127).
 
 vchar() ->
-	int(33, 126).
+	integer(33, 126).
 
 obs_text() ->
-	int(128, 255).
+	integer(128, 255).
 
 qdtext() ->
 	frequency([
@@ -200,7 +200,7 @@ parameter() ->
 
 weight() ->
 	frequency([
-		{90, int(0, 1000)},
+		{90, integer(0, 1000)},
 		{10, undefined}
 	]).
 
@@ -1759,7 +1759,7 @@ etag(<< C, R/bits >>, Strength, Tag) when ?IS_ETAGC(C) ->
 
 -ifdef(TEST).
 etagc() ->
-	?SUCHTHAT(C, int(16#21, 16#ff), C =/= 16#22 andalso C =/= 16#7f).
+	?SUCHTHAT(C, integer(16#21, 16#ff), C =/= 16#22 andalso C =/= 16#7f).
 
 etag() ->
 	?LET({Strength, Tag},
@@ -1920,7 +1920,7 @@ host() -> vector(1, 255, elements(host_chars())).
 
 host_port() ->
 	?LET({Host, Port},
-		{host(), oneof([undefined, int(1, 65535)])},
+		{host(), oneof([undefined, integer(1, 65535)])},
 		begin
 			HostBin = list_to_binary(Host),
 			{{?LOWER(HostBin), Port},
@@ -1970,7 +1970,7 @@ horse_parse_host_ipv6_v4() ->
 
 %% @doc Parse the HTTP2-Settings header.
 
--spec parse_http2_settings(binary()) -> binary().
+-spec parse_http2_settings(binary()) -> map().
 parse_http2_settings(HTTP2Settings) ->
 	cow_http2:parse_settings_payload(base64:decode(HTTP2Settings)).
 
@@ -2242,7 +2242,7 @@ scheme() -> oneof([<<"http">>, <<"https">>]).
 
 scheme_host_port() ->
 	?LET({Scheme, Host, Port},
-		{scheme(), host(), int(1, 65535)},
+		{scheme(), host(), integer(1, 65535)},
 		begin
 			HostBin = list_to_binary(Host),
 			{[{Scheme, ?LOWER(HostBin), Port}],
@@ -2624,12 +2624,13 @@ parse_sec_websocket_key(SecWebSocketKey) ->
 
 -spec parse_sec_websocket_protocol_req(binary()) -> [binary()].
 parse_sec_websocket_protocol_req(SecWebSocketProtocol) ->
-	nonempty(token_ci_list(SecWebSocketProtocol, [])).
+	nonempty(token_list(SecWebSocketProtocol, [])).
 
 -ifdef(TEST).
 parse_sec_websocket_protocol_req_test_() ->
 	Tests = [
-		{<<"chat, superchat">>, [<<"chat">>, <<"superchat">>]}
+		{<<"chat, superchat">>, [<<"chat">>, <<"superchat">>]},
+		{<<"Chat, SuperChat">>, [<<"Chat">>, <<"SuperChat">>]}
 	],
 	[{V, fun() -> R = parse_sec_websocket_protocol_req(V) end} || {V, R} <- Tests].
 
@@ -2649,23 +2650,21 @@ horse_parse_sec_websocket_protocol_req() ->
 %% @doc Parse the Sec-Websocket-Protocol response header.
 
 -spec parse_sec_websocket_protocol_resp(binary()) -> binary().
-parse_sec_websocket_protocol_resp(<< C, R/bits >>) when ?IS_TOKEN(C) ->
-	?LOWER(token_ci, R, <<>>).
-
-token_ci(<<>>, T) -> T;
-token_ci(<< C, R/bits >>, T) when ?IS_TOKEN(C) ->
-	?LOWER(token_ci, R, T).
+parse_sec_websocket_protocol_resp(Protocol) ->
+	true = <<>> =/= Protocol,
+	ok = validate_token(Protocol),
+	Protocol.
 
 -ifdef(TEST).
 prop_parse_sec_websocket_protocol_resp() ->
 	?FORALL(T,
 		token(),
-		?LOWER(T) =:= parse_sec_websocket_protocol_resp(T)).
+		T =:= parse_sec_websocket_protocol_resp(T)).
 
 parse_sec_websocket_protocol_resp_test_() ->
 	Tests = [
 		{<<"chat">>, <<"chat">>},
-		{<<"CHAT">>, <<"chat">>}
+		{<<"CHAT">>, <<"CHAT">>}
 	],
 	[{V, fun() -> R = parse_sec_websocket_protocol_resp(V) end} || {V, R} <- Tests].
 
@@ -2693,7 +2692,7 @@ parse_sec_websocket_version_req(SecWebSocketVersion) when byte_size(SecWebSocket
 -ifdef(TEST).
 prop_parse_sec_websocket_version_req() ->
 	?FORALL(Version,
-		int(0, 255),
+		integer(0, 255),
 		Version =:= parse_sec_websocket_version_req(integer_to_binary(Version))).
 
 parse_sec_websocket_version_req_test_() ->
@@ -2744,7 +2743,7 @@ ws_version_list_sep(<< $,, R/bits >>, Acc) -> ws_version_list(R, Acc).
 -ifdef(TEST).
 sec_websocket_version_resp() ->
 	?LET(L,
-		non_empty(list({ows(), ows(), int(0, 255)})),
+		non_empty(list({ows(), ows(), integer(0, 255)})),
 		begin
 			<< _, SecWebSocketVersion/binary >> = iolist_to_binary(
 				[[OWS1, $,, OWS2, integer_to_binary(V)] || {OWS1, OWS2, V} <- L]),
@@ -2834,7 +2833,7 @@ te() ->
 			L2 = case Trail of
 				no_trailers -> L;
 				trailers ->
-					Rand = random:uniform(length(L) + 1) - 1,
+					Rand = rand:uniform(length(L) + 1) - 1,
 					{Before, After} = lists:split(Rand, L),
 					Before ++ [{<<"trailers">>, undefined}|After]
 			end,
@@ -2847,7 +2846,6 @@ te() ->
 	).
 
 prop_parse_te() ->
-	random:seed(os:timestamp()),
 	?FORALL({Trail, L, TE},
 		te(),
 		begin
@@ -3203,13 +3201,53 @@ horse_parse_www_authenticate() ->
 
 -spec parse_x_forwarded_for(binary()) -> [binary()].
 parse_x_forwarded_for(XForwardedFor) ->
-	nonempty(token_list(XForwardedFor, [])).
+	nonempty(nodeid_list(XForwardedFor, [])).
+
+-define(IS_NODEID_TOKEN(C),
+	?IS_ALPHA(C) or ?IS_DIGIT(C)
+		or (C =:= $:) or (C =:= $.) or (C =:= $_)
+		or (C =:= $-) or (C =:= $[) or (C =:= $])).
+
+nodeid_list(<<>>, Acc) -> lists:reverse(Acc);
+nodeid_list(<<C, R/bits>>, Acc) when ?IS_WS_COMMA(C) -> nodeid_list(R, Acc);
+nodeid_list(<<C, R/bits>>, Acc) when ?IS_NODEID_TOKEN(C) -> nodeid(R, Acc, <<C>>).
+
+nodeid(<<C, R/bits>>, Acc, T) when ?IS_NODEID_TOKEN(C) -> nodeid(R, Acc, <<T/binary, C>>);
+nodeid(R, Acc, T) -> nodeid_list_sep(R, [T|Acc]).
+
+nodeid_list_sep(<<>>, Acc) -> lists:reverse(Acc);
+nodeid_list_sep(<<C, R/bits>>, Acc) when ?IS_WS(C) -> nodeid_list_sep(R, Acc);
+nodeid_list_sep(<<$,, R/bits>>, Acc) -> nodeid_list(R, Acc).
 
 -ifdef(TEST).
 parse_x_forwarded_for_test_() ->
 	Tests = [
-		{<<"client, proxy1, proxy2">>, [<<"client">>, <<"proxy1">>, <<"proxy2">>]},
-		{<<"128.138.243.150, unknown, 192.52.106.30">>, [<<"128.138.243.150">>, <<"unknown">>, <<"192.52.106.30">>]}
+		{<<"client, proxy1, proxy2">>,
+			[<<"client">>, <<"proxy1">>, <<"proxy2">>]},
+		{<<"128.138.243.150, unknown, 192.52.106.30">>,
+			[<<"128.138.243.150">>, <<"unknown">>, <<"192.52.106.30">>]},
+		%% Examples from Mozilla DN.
+		{<<"2001:db8:85a3:8d3:1319:8a2e:370:7348">>,
+			[<<"2001:db8:85a3:8d3:1319:8a2e:370:7348">>]},
+		{<<"203.0.113.195">>,
+			[<<"203.0.113.195">>]},
+		{<<"203.0.113.195, 70.41.3.18, 150.172.238.178">>,
+			[<<"203.0.113.195">>, <<"70.41.3.18">>, <<"150.172.238.178">>]},
+		%% Examples from RFC7239 modified for x-forwarded-for.
+		{<<"[2001:db8:cafe::17]:4711">>,
+			[<<"[2001:db8:cafe::17]:4711">>]},
+		{<<"192.0.2.43, 198.51.100.17">>,
+			[<<"192.0.2.43">>, <<"198.51.100.17">>]},
+		{<<"_hidden">>,
+			[<<"_hidden">>]},
+		{<<"192.0.2.43,[2001:db8:cafe::17],unknown">>,
+			[<<"192.0.2.43">>, <<"[2001:db8:cafe::17]">>, <<"unknown">>]},
+		{<<"192.0.2.43, [2001:db8:cafe::17], unknown">>,
+			[<<"192.0.2.43">>, <<"[2001:db8:cafe::17]">>, <<"unknown">>]},
+		{<<"192.0.2.43, 2001:db8:cafe::17">>,
+			[<<"192.0.2.43">>, <<"2001:db8:cafe::17">>]},
+		{<<"192.0.2.43, [2001:db8:cafe::17]">>,
+			[<<"192.0.2.43">>, <<"[2001:db8:cafe::17]">>]}
 	],
 	[{V, fun() -> R = parse_x_forwarded_for(V) end} || {V, R} <- Tests].
 

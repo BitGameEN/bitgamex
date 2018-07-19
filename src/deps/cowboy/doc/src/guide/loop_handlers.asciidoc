@@ -1,8 +1,6 @@
 [[loop_handlers]]
 == Loop handlers
 
-// @todo This description needs to be updated.
-
 Loop handlers are a special kind of HTTP handlers used when the
 response can not be sent right away. The handler enters instead
 a receive loop waiting for the right message before it can send
@@ -16,7 +14,7 @@ most known example of such practice is known as long polling.
 Loop handlers can also be used for requests where a response is
 partially available and you need to stream the response body
 while the connection is open. The most known example of such
-practice is known as server-sent events.
+practice is server-sent events.
 
 While the same can be accomplished using plain HTTP handlers,
 it is recommended to use loop handlers because they are well-tested
@@ -34,22 +32,20 @@ loop handler behavior. This tuple may optionally contain
 a timeout value and/or the atom `hibernate` to make the
 process enter hibernation until a message is received.
 
-This snippet enables the loop handler.
+This snippet enables the loop handler:
 
 [source,erlang]
 ----
-init(Req, _Opts) ->
-    {cowboy_loop, Req, #state{}}.
+init(Req, State) ->
+    {cowboy_loop, Req, State}.
 ----
 
-However it is largely recommended that you set a timeout
-value. The next example sets a timeout value of 30s and
-also makes the process hibernate.
+This also makes the process hibernate:
 
 [source,erlang]
 ----
-init(Req, _Opts) ->
-    {cowboy_loop, Req, #state{}, 30000, hibernate}.
+init(Req, State) ->
+    {cowboy_loop, Req, State, hibernate}.
 ----
 
 === Receive loop
@@ -66,7 +62,7 @@ message otherwise.
 [source,erlang]
 ----
 info({reply, Body}, Req, State) ->
-    cowboy_req:reply(200, [], Body, Req),
+    cowboy_req:reply(200, #{}, Body, Req),
     {stop, Req, State};
 info(_Msg, Req, State) ->
     {ok, Req, State, hibernate}.
@@ -96,25 +92,25 @@ This can be done by initiating a chunked reply in the
 every time a message is received.
 
 The following snippet does exactly that. As you can see
-a chunk is sent every time a `chunk` message is received,
+a chunk is sent every time an `event` message is received,
 and the loop is stopped by sending an `eof` message.
 
 [source,erlang]
 ----
-init(Req, _Opts) ->
-    Req2 = cowboy_req:chunked_reply(200, [], Req),
-    {cowboy_loop, Req2, #state{}}.
+init(Req, State) ->
+    Req2 = cowboy_req:stream_reply(200, Req),
+    {cowboy_loop, Req2, State}.
 
 info(eof, Req, State) ->
     {stop, Req, State};
-info({chunk, Chunk}, Req, State) ->
-    cowboy_req:chunk(Chunk, Req),
+info({event, Data}, Req, State) ->
+    cowboy_req:stream_body(Data, nofin, Req),
     {ok, Req, State};
 info(_Msg, Req, State) ->
     {ok, Req, State}.
 ----
 
-==== Cleaning up
+=== Cleaning up
 
 It is recommended that you set the connection header to
 `close` when replying, as this process may be reused for
@@ -122,22 +118,6 @@ a subsequent request.
 
 Please refer to the xref:handlers[Handlers chapter]
 for general instructions about cleaning up.
-
-=== Timeout
-
-By default Cowboy will not attempt to close the connection
-if there is no activity from the client. This is not always
-desirable, which is why you can set a timeout. Cowboy will
-close the connection if no data was received from the client
-after the configured time. The timeout only needs to be set
-once and can't be modified afterwards.
-
-Because the request may have had a body, or may be followed
-by another request, Cowboy is forced to buffer all data it
-receives. This data may grow to become too large though,
-so there is a configurable limit for it. The default buffer
-size is of 5000 bytes, but it may be changed by setting the
-`loop_max_buffer` middleware environment value.
 
 === Hibernate
 

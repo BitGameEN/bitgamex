@@ -2,27 +2,50 @@
 
 PROJECT = cowlib
 PROJECT_DESCRIPTION = Support library for manipulating Web protocols.
-PROJECT_VERSION = 1.3.0
+PROJECT_VERSION = 2.4.0
+
+# Options.
 
 #ERLC_OPTS += +bin_opt_info
-OTP_DEPS = crypto
-DIALYZER_OPTS = -Werror_handling -Wunmatched_returns
-CI_OTP = OTP-18.0.3
+ifdef HIPE
+	ERLC_OPTS += -smp +native
+	TEST_ERLC_OPTS += -smp +native
+endif
 
-TEST_ERLC_OPTS += +'{parse_transform, eunit_autoexport}' +'{parse_transform, horse_autoexport}'
-TEST_DEPS = horse triq
-dep_horse = git https://github.com/extend/horse master
-dep_triq = git https://github.com/krestenkrab/triq master
+DIALYZER_OPTS = -Werror_handling -Wunmatched_returns
+
+# Dependencies.
+
+LOCAL_DEPS = crypto
+
+TEST_DEPS = $(if $(CI_ERLANG_MK),ci.erlang.mk) horse proper
+dep_horse = git https://github.com/ninenines/horse.git master
+
+# CI configuration.
+
+dep_ci.erlang.mk = git https://github.com/ninenines/ci.erlang.mk master
+DEP_EARLY_PLUGINS = ci.erlang.mk
+
+AUTO_CI_OTP ?= OTP-19+
+AUTO_CI_HIPE ?= OTP-LATEST
+# AUTO_CI_ERLLVM ?= OTP-LATEST
+AUTO_CI_WINDOWS ?= OTP-19+
+
+# Standard targets.
 
 include erlang.mk
 
-.PHONY: gen perfs
+# Compile options.
+
+TEST_ERLC_OPTS += +'{parse_transform, eunit_autoexport}' +'{parse_transform, horse_autoexport}'
 
 # Mimetypes module generator.
 
 GEN_URL = http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
 GEN_SRC = src/cow_mimetypes.erl.src
 GEN_OUT = src/cow_mimetypes.erl
+
+.PHONY: gen
 
 gen:
 	$(gen_verbose) cat $(GEN_SRC) \
@@ -47,6 +70,7 @@ ifeq ($(MAKECMDGOALS),perfs)
 .NOTPARALLEL:
 endif
 
+.PHONY: perfs
+
 perfs: test-build
-	$(gen_verbose) erl -noshell -pa ebin deps/horse/ebin \
-		-eval 'horse:app_perf($(PROJECT)), erlang:halt().'
+	$(gen_verbose) erl -noshell -pa ebin -eval 'horse:app_perf($(PROJECT)), erlang:halt().'

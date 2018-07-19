@@ -1,4 +1,4 @@
-%% Copyright (c) 2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2015-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -138,7 +138,8 @@ init_permessage_deflate(InflateWindowBits, DeflateWindowBits, Opts) ->
 	Inflate = zlib:open(),
 	ok = zlib:inflateInit(Inflate, -InflateWindowBits),
 	Deflate = zlib:open(),
-	%% @todo Remove this case .. of for OTP 18+ if PR https://github.com/erlang/otp/pull/633 gets merged.
+	%% zlib 1.2.11+ now rejects -8. It used to transform it to -9.
+	%% We need to use 9 when 8 is requested for interoperability.
 	DeflateWindowBits2 = case DeflateWindowBits of
 		8 -> 9;
 		_ -> DeflateWindowBits
@@ -149,6 +150,31 @@ init_permessage_deflate(InflateWindowBits, DeflateWindowBits, Opts) ->
 		-DeflateWindowBits2,
 		maps:get(mem_level, Opts, 8),
 		maps:get(strategy, Opts, default)),
+	%% Set the owner pid of the zlib contexts if requested.
+	%%
+	%% The zlib port became a reference in OTP 20.1+. There
+	%% was however no way to change the controlling process
+	%% until the OTP 20.1.3 patch version. Since we can't
+	%% enable compression for 20.1, 20.1.1 and 20.1.2 we
+	%% explicitly crash. The caller should ignore this extension.
+	_ = case Opts of
+		#{owner := Pid} when is_port(Inflate) ->
+			true = erlang:port_connect(Inflate, Pid),
+			true = unlink(Inflate),
+			true = erlang:port_connect(Deflate, Pid),
+			unlink(Deflate);
+		#{owner := Pid} ->
+			case erlang:function_exported(zlib, set_controlling_process, 2) of
+				true ->
+					zlib:set_controlling_process(Inflate, Pid),
+					zlib:set_controlling_process(Deflate, Pid);
+				false ->
+					exit({error, incompatible_zlib_version,
+						'OTP 20.1, 20.1.1 and 20.1.2 are missing required functionality.'})
+			end;
+		_ ->
+			true
+	end,
 	{Inflate, Deflate}.
 
 %% @doc Negotiate the x-webkit-deflate-frame extension.

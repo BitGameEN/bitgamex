@@ -1,4 +1,4 @@
-%% Copyright (c) 2016, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2016-2017, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -14,6 +14,7 @@
 
 -module(static_handler_SUITE).
 -compile(export_all).
+-compile(nowarn_export_all).
 
 -import(ct_helper, [config/2]).
 -import(ct_helper, [doc/1]).
@@ -39,8 +40,11 @@ groups() ->
 		{http, [parallel], GroupTests},
 		{https, [parallel], GroupTests},
 		{h2, [parallel], GroupTests},
-		{h2c, [parallel], GroupTests}
-		%% @todo With compression enabled.
+		{h2c, [parallel], GroupTests},
+		{http_compress, [parallel], GroupTests},
+		{https_compress, [parallel], GroupTests},
+		{h2_compress, [parallel], GroupTests},
+		{h2c_compress, [parallel], GroupTests}
 	].
 
 init_per_suite(Config) ->
@@ -56,6 +60,11 @@ init_per_suite(Config) ->
 	ct_helper:create_static_dir(StaticDir),
 	init_large_file(PrivDir ++ "/large.bin"),
 	init_large_file(StaticDir ++ "/large.bin"),
+	%% Add a simple Erlang application archive containing one file
+	%% in its priv directory.
+	true = code:add_pathz(filename:join(
+		[config(data_dir, Config), "static_files_app", "ebin"])),
+	ok = application:load(static_files_app),
 	%% A special folder contains files of 1 character from 0 to 127.
 	CharDir = config(priv_dir, Config) ++ "/char",
 	ok = filelib:ensure_dir(CharDir ++ "/file"),
@@ -75,8 +84,9 @@ end_per_suite(Config) ->
 	%% Static directories.
 	StaticDir = config(static_dir, Config),
 	PrivDir = code:priv_dir(ct_helper) ++ "/static",
-	ok = file:delete(StaticDir ++ "/large.bin"),
-	ok = file:delete(PrivDir ++ "/large.bin"),
+	%% This file is not created on Windows.
+	_ = file:delete(StaticDir ++ "/large.bin"),
+	_ = file:delete(PrivDir ++ "/large.bin"),
 	ct_helper:delete_static_dir(StaticDir),
 	ct_helper:delete_static_dir(PrivDir).
 
@@ -97,7 +107,7 @@ end_per_group(Name, _) ->
 init_large_file(Filename) ->
 	case os:type() of
 		{unix, _} ->
-			"" = os:cmd("truncate -s 512M " ++ Filename),
+			"" = os:cmd("truncate -s 32M " ++ Filename),
 			ok;
 		{win32, _} ->
 			ok
@@ -143,7 +153,11 @@ init_dispatch(Config) ->
 		{"/bad/options/mime", cowboy_static, {priv_file, ct_helper, "static/style.css", [{mimetypes, bad}]}},
 		{"/bad/options/etag", cowboy_static, {priv_file, ct_helper, "static/style.css", [{etag, true}]}},
 		{"/unknown/option", cowboy_static, {priv_file, ct_helper, "static/style.css", [{bad, option}]}},
-		{"/char/[...]", cowboy_static, {dir, config(char_dir, Config)}}
+		{"/char/[...]", cowboy_static, {dir, config(char_dir, Config)}},
+		{"/ez_priv_file/index.html", cowboy_static, {priv_file, static_files_app, "www/index.html"}},
+		{"/bad/ez_priv_file/index.php", cowboy_static, {priv_file, static_files_app, "www/index.php"}},
+		{"/ez_priv_dir/[...]", cowboy_static, {priv_dir, static_files_app, "www"}},
+		{"/bad/ez_priv_dir/[...]", cowboy_static, {priv_dir, static_files_app, "cgi-bin"}}
 	]}]).
 
 %% Internal functions.
@@ -171,7 +185,7 @@ do_get(Path, Config) ->
 
 do_get(Path, ReqHeaders, Config) ->
 	ConnPid = gun_open(Config),
-	Ref = gun:get(ConnPid, Path, ReqHeaders),
+	Ref = gun:get(ConnPid, Path, [{<<"accept-encoding">>, <<"gzip">>}|ReqHeaders]),
 	{response, IsFin, Status, RespHeaders} = gun:await(ConnPid, Ref),
 	{ok, Body} = case IsFin of
 		nofin -> gun:await_body(ConnPid, Ref);
@@ -195,6 +209,11 @@ bad_dir_path(Config) ->
 bad_dir_route(Config) ->
 	doc("Bad cowboy_static options: missing [...] in route."),
 	{500, _, _} = do_get("/bad/dir/route", Config),
+	ok.
+
+bad_file_in_priv_dir_in_ez_archive(Config) ->
+	doc("Get a missing file from a priv_dir stored in Erlang application .ez archive."),
+	{404, _, _} = do_get("/ez_priv_dir/index.php", Config),
 	ok.
 
 bad_file_path(Config) ->
@@ -222,6 +241,11 @@ bad_priv_dir_app(Config) ->
 	{500, _, _} = do_get("/bad/priv_dir/app/style.css", Config),
 	ok.
 
+bad_priv_dir_in_ez_archive(Config) ->
+	doc("Bad cowboy_static options: priv_dir path missing from Erlang application .ez archive."),
+	{404, _, _} = do_get("/bad/ez_priv_dir/index.html", Config),
+	ok.
+
 bad_priv_dir_no_priv(Config) ->
 	doc("Bad cowboy_static options: application has no priv directory."),
 	{404, _, _} = do_get("/bad/priv_dir/no-priv/style.css", Config),
@@ -240,6 +264,11 @@ bad_priv_dir_route(Config) ->
 bad_priv_file_app(Config) ->
 	doc("Bad cowboy_static options: wrong application name."),
 	{500, _, _} = do_get("/bad/priv_file/app", Config),
+	ok.
+
+bad_priv_file_in_ez_archive(Config) ->
+	doc("Bad cowboy_static options: priv_file path missing from Erlang application .ez archive."),
+	{404, _, _} = do_get("/bad/ez_priv_file/index.php", Config),
 	ok.
 
 bad_priv_file_no_priv(Config) ->
@@ -310,6 +339,11 @@ dir_dotdot_file(Config) ->
 	{404, _, _} = do_get(config(prefix, Config) ++ "/directory/../../static/style.css", Config),
 	ok.
 
+dir_empty_file(Config) ->
+	doc("Get an empty .txt file."),
+	{200, _, <<>>} = do_get(config(prefix, Config) ++ "/empty.txt", Config),
+	ok.
+
 dir_error_directory(Config) ->
 	doc("Try to get a directory."),
 	{403, _, _} = do_get(config(prefix, Config) ++ "/directory", Config),
@@ -322,7 +356,9 @@ dir_error_directory_slash(Config) ->
 
 dir_error_doesnt_exist(Config) ->
 	doc("Try to get a file that does not exist."),
-	{404, _, _} = do_get(config(prefix, Config) ++ "/not.found", Config),
+	%% @todo Check that the content-type header is removed.
+	{404, _Headers, _} = do_get(config(prefix, Config) ++ "/not.found", Config),
+%	false = lists:keyfind(<<"content-type">>, 1, Headers),
 	ok.
 
 dir_error_dot(Config) ->
@@ -379,13 +415,30 @@ dir_html(Config) ->
 	{_, <<"text/html">>} = lists:keyfind(<<"content-type">>, 1, Headers),
 	ok.
 
-%% @todo This test results in a crash dump.
-%dir_large_file(Config) ->
-%	doc("Get a large file."),
-%	{200, Headers, _} = do_get(config(prefix, Config) ++ "/large.bin", Config),
-%	{_, <<"text/html">>} = lists:keyfind(<<"content-type">>, 1, Headers),
-%% @todo Receive body.
-%	ok.
+dir_large_file(Config) ->
+	doc("Get a large file."),
+	ConnPid = gun_open(Config),
+	Ref = gun:get(ConnPid, config(prefix, Config) ++ "/large.bin",
+		[{<<"accept-encoding">>, <<"gzip">>}]),
+	{response, nofin, 200, RespHeaders} = gun:await(ConnPid, Ref),
+	{_, <<"application/octet-stream">>} = lists:keyfind(<<"content-type">>, 1, RespHeaders),
+	Size = 32*1024*1024,
+	{ok, Size} = do_dir_large_file(ConnPid, Ref, 0),
+	ok.
+
+do_dir_large_file(ConnPid, Ref, N) ->
+	receive
+		{gun_data, ConnPid, Ref, nofin, Data} ->
+			do_dir_large_file(ConnPid, Ref, N + byte_size(Data));
+		{gun_data, ConnPid, Ref, fin, Data} ->
+			{ok, N + byte_size(Data)};
+		{gun_error, ConnPid, Ref, Reason} ->
+			{error, Reason};
+		{gun_error, ConnPid, Reason} ->
+			{error, Reason}
+	after 5000 ->
+		{error, timeout}
+	end.
 
 dir_text(Config) ->
 	doc("Get a .txt file. The extension is unknown by default."),
@@ -702,10 +755,22 @@ mime_hardcode_tuple(Config) ->
 	{_, <<"application/vnd.ninenines.cowboy+xml;v=1">>} = lists:keyfind(<<"content-type">>, 1, Headers),
 	ok.
 
+priv_dir_in_ez_archive(Config) ->
+	doc("Get a file from a priv_dir stored in Erlang application .ez archive."),
+	{200, Headers, <<"<h1>It works!</h1>\n">>} = do_get("/ez_priv_dir/index.html", Config),
+	{_, <<"text/html">>} = lists:keyfind(<<"content-type">>, 1, Headers),
+	ok.
+
 priv_file(Config) ->
 	doc("Get a file with hardcoded route."),
 	{200, Headers, <<"body{color:red}\n">>} = do_get("/priv_file/style.css", Config),
 	{_, <<"text/css">>} = lists:keyfind(<<"content-type">>, 1, Headers),
+	ok.
+
+priv_file_in_ez_archive(Config) ->
+	doc("Get a file stored in Erlang application .ez archive."),
+	{200, Headers, <<"<h1>It works!</h1>\n">>} = do_get("/ez_priv_file/index.html", Config),
+	{_, <<"text/html">>} = lists:keyfind(<<"content-type">>, 1, Headers),
 	ok.
 
 unicode_basic_latin(Config) ->
@@ -736,7 +801,7 @@ unicode_basic_error(Config) ->
 		http2 -> "#?"
 	end,
 	_ = [case do_get("/char/" ++ [C], Config) of
-		{500, _, _} -> ok;
+		{400, _, _} -> ok;
 		Error -> exit({error, C, Error})
 	end || C <- (config(chars, Config) -- Exclude) --
 		"abcdefghijklmnopqrstuvwxyz"

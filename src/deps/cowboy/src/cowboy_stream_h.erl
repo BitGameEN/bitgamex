@@ -1,4 +1,4 @@
-%% Copyright (c) 2016, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2016-2017, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -13,146 +13,274 @@
 %% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 -module(cowboy_stream_h).
-%% @todo -behaviour(cowboy_stream).
+-behavior(cowboy_stream).
 
-%% @todo Maybe have a callback for the type of process this is, worker or supervisor.
+-ifdef(OTP_RELEASE).
+-compile({nowarn_deprecated_function, [{erlang, get_stacktrace, 0}]}).
+-endif.
+
 -export([init/3]).
 -export([data/4]).
 -export([info/3]).
 -export([terminate/3]).
+-export([early_error/5]).
 
--export([proc_lib_hack/3]).
+-export([request_process/3]).
 -export([execute/3]).
 -export([resume/5]).
 
 -record(state, {
+	next :: any(),
 	ref = undefined :: ranch:ref(),
 	pid = undefined :: pid(),
-	read_body_ref = undefined :: reference(),
-	read_body_length = 0 :: non_neg_integer(),
-	read_body_is_fin = nofin :: nofin | fin,
-	read_body_buffer = <<>> :: binary()
+	expect = undefined :: undefined | continue,
+	read_body_ref = undefined :: reference() | undefined,
+	read_body_timer_ref = undefined :: reference() | undefined,
+	read_body_length = 0 :: non_neg_integer() | infinity | auto,
+	read_body_is_fin = nofin :: nofin | {fin, non_neg_integer()},
+	read_body_buffer = <<>> :: binary(),
+	body_length = 0 :: non_neg_integer()
 }).
 
 %% @todo For shutting down children we need to have a timeout before we terminate
 %% the stream like supervisors do. So here just send a message to yourself first,
 %% and then decide what to do when receiving this message.
 
-%% @todo proper specs
--spec init(_,_,_) -> _.
-init(_StreamID, Req=#{ref := Ref}, Opts) ->
+-spec init(cowboy_stream:streamid(), cowboy_req:req(), cowboy:opts())
+	-> {[{spawn, pid(), timeout()}], #state{}}.
+init(StreamID, Req=#{ref := Ref}, Opts) ->
 	Env = maps:get(env, Opts, #{}),
 	Middlewares = maps:get(middlewares, Opts, [cowboy_router, cowboy_handler]),
-	Shutdown = maps:get(shutdown, Opts, 5000),
-	Pid = proc_lib:spawn_link(?MODULE, proc_lib_hack, [Req, Env, Middlewares]),
-	{[{spawn, Pid, Shutdown}], #state{ref=Ref, pid=Pid}}.
+	Shutdown = maps:get(shutdown_timeout, Opts, 5000),
+	Pid = proc_lib:spawn_link(?MODULE, request_process, [Req, Env, Middlewares]),
+	Expect = expect(Req),
+	{Commands, Next} = cowboy_stream:init(StreamID, Req, Opts),
+	{[{spawn, Pid, Shutdown}|Commands],
+		#state{next=Next, ref=Ref, pid=Pid, expect=Expect}}.
+
+%% Ignore the expect header in HTTP/1.0.
+expect(#{version := 'HTTP/1.0'}) ->
+	undefined;
+expect(Req) ->
+	try cowboy_req:parse_header(<<"expect">>, Req) of
+		Expect ->
+			Expect
+	catch _:_ ->
+		undefined
+	end.
 
 %% If we receive data and stream is waiting for data:
-%%	If we accumulated enough data or IsFin=fin, send it.
-%%	If not, buffer it.
+%%   If we accumulated enough data or IsFin=fin, send it.
+%%   If we are in auto mode, send it and update flow control.
+%%   If not, buffer it.
 %% If not, buffer it.
-
-%% @todo proper specs
--spec data(_,_,_,_) -> _.
-data(_StreamID, IsFin, Data, State=#state{read_body_ref=undefined, read_body_buffer=Buffer}) ->
-	{[], State#state{read_body_is_fin=IsFin, read_body_buffer= << Buffer/binary, Data/binary >>}};
-data(_StreamID, nofin, Data, State=#state{read_body_length=Length, read_body_buffer=Buffer}) when byte_size(Data) + byte_size(Buffer) < Length ->
-	{[], State#state{read_body_buffer= << Buffer/binary, Data/binary >>}};
-data(_StreamID, IsFin, Data, State=#state{pid=Pid, read_body_ref=Ref, read_body_buffer=Buffer}) ->
-	Pid ! {request_body, Ref, IsFin, << Buffer/binary, Data/binary >>},
-	{[], State#state{read_body_ref=undefined, read_body_buffer= <<>>}}.
-
-%% @todo proper specs
--spec info(_,_,_) -> _.
-info(_StreamID, {'EXIT', Pid, normal}, State=#state{pid=Pid}) ->
-	{[stop], State};
-%% @todo Transition.
-%% In the future it would be better to simplify things
-%% and only catch this at the stream level.
 %%
-%% Maybe we don't need specific error messages
-%% for every single callbacks anymore?
-info(_StreamID, Exit = {'EXIT', Pid, {cowboy_handler, _}}, State=#state{pid=Pid}) ->
-	%% No crash report; one has already been sent.
-	{[
-		{response, 500, #{<<"content-length">> => <<"0">>}, <<>>},
-		{internal_error, Exit, 'Stream process crashed.'}
-	], State};
-info(_StreamID, {'EXIT', Pid, {_Reason, [_, {cow_http_hd, _, _, _}|_]}}, State=#state{pid=Pid}) ->
-	%% @todo Have an option to enable/disable this specific crash report?
-	%%report_crash(Ref, StreamID, Pid, Reason, Stacktrace),
-	%% @todo Headers? Details in body? More stuff in debug only?
-	{[{response, 400, #{}, <<>>}, stop], State};
-info(StreamID, Exit = {'EXIT', Pid, {Reason, Stacktrace}}, State=#state{ref=Ref, pid=Pid}) ->
-	report_crash(Ref, StreamID, Pid, Reason, Stacktrace),
-	{[
-		{response, 500, #{<<"content-length">> => <<"0">>}, <<>>},
-		{internal_error, Exit, 'Stream process crashed.'}
-	], State};
-%% Request body, no body buffer but IsFin=fin.
-info(_StreamID, {read_body, Ref, _}, State=#state{pid=Pid, read_body_is_fin=fin, read_body_buffer= <<>>}) ->
-	Pid ! {request_body, Ref, fin, <<>>},
-	{[], State};
+%% We always reset the expect field when we receive data,
+%% since the client started sending the request body before
+%% we could send a 100 continue response.
+
+-spec data(cowboy_stream:streamid(), cowboy_stream:fin(), cowboy_req:resp_body(), State)
+	-> {cowboy_stream:commands(), State} when State::#state{}.
+%% Stream isn't waiting for data.
+data(StreamID, IsFin, Data, State=#state{
+		read_body_ref=undefined, read_body_buffer=Buffer, body_length=BodyLen}) ->
+	do_data(StreamID, IsFin, Data, [], State#state{
+		expect=undefined,
+		read_body_is_fin=IsFin,
+		read_body_buffer= << Buffer/binary, Data/binary >>,
+		body_length=BodyLen + byte_size(Data)
+	});
+%% Stream is waiting for data using auto mode.
+%%
+%% There is no buffering done in auto mode.
+data(StreamID, IsFin, Data, State=#state{pid=Pid, read_body_ref=Ref,
+		read_body_length=auto, body_length=BodyLen}) ->
+	send_request_body(Pid, Ref, IsFin, BodyLen, Data),
+	do_data(StreamID, IsFin, Data, [{flow, byte_size(Data)}], State#state{
+		read_body_ref=undefined,
+		body_length=BodyLen
+	});
+%% Stream is waiting for data but we didn't receive enough to send yet.
+data(StreamID, IsFin=nofin, Data, State=#state{
+		read_body_length=ReadLen, read_body_buffer=Buffer, body_length=BodyLen})
+		when byte_size(Data) + byte_size(Buffer) < ReadLen ->
+	do_data(StreamID, IsFin, Data, [], State#state{
+		expect=undefined,
+		read_body_buffer= << Buffer/binary, Data/binary >>,
+		body_length=BodyLen + byte_size(Data)
+	});
+%% Stream is waiting for data and we received enough to send.
+data(StreamID, IsFin, Data, State=#state{pid=Pid, read_body_ref=Ref,
+		read_body_timer_ref=TRef, read_body_buffer=Buffer, body_length=BodyLen0}) ->
+	BodyLen = BodyLen0 + byte_size(Data),
+	%% @todo Handle the infinity case where no TRef was defined.
+	ok = erlang:cancel_timer(TRef, [{async, true}, {info, false}]),
+	send_request_body(Pid, Ref, IsFin, BodyLen, <<Buffer/binary, Data/binary>>),
+	do_data(StreamID, IsFin, Data, [], State#state{
+		expect=undefined,
+		read_body_ref=undefined,
+		read_body_timer_ref=undefined,
+		read_body_buffer= <<>>,
+		body_length=BodyLen
+	}).
+
+do_data(StreamID, IsFin, Data, Commands1, State=#state{next=Next0}) ->
+	{Commands2, Next} = cowboy_stream:data(StreamID, IsFin, Data, Next0),
+	{Commands1 ++ Commands2, State#state{next=Next}}.
+
+-spec info(cowboy_stream:streamid(), any(), State)
+	-> {cowboy_stream:commands(), State} when State::#state{}.
+info(StreamID, Info={'EXIT', Pid, normal}, State=#state{pid=Pid}) ->
+	do_info(StreamID, Info, [stop], State);
+info(StreamID, Info={'EXIT', Pid, {{request_error, Reason, _HumanReadable}, _}},
+		State=#state{pid=Pid}) ->
+	Status = case Reason of
+		timeout -> 408;
+		payload_too_large -> 413;
+		_ -> 400
+	end,
+	%% @todo Headers? Details in body? Log the crash? More stuff in debug only?
+	do_info(StreamID, Info, [
+		{error_response, Status, #{<<"content-length">> => <<"0">>}, <<>>},
+		stop
+	], State);
+info(StreamID, Exit={'EXIT', Pid, {Reason, Stacktrace}}, State=#state{ref=Ref, pid=Pid}) ->
+	Commands0 = [{internal_error, Exit, 'Stream process crashed.'}],
+	Commands = case Reason of
+		normal -> Commands0;
+		shutdown -> Commands0;
+		{shutdown, _} -> Commands0;
+		_ -> [{log, error,
+				"Ranch listener ~p, connection process ~p, stream ~p "
+				"had its request process ~p exit with reason "
+				"~999999p and stacktrace ~999999p~n",
+				[Ref, self(), StreamID, Pid, Reason, Stacktrace]}
+			|Commands0]
+	end,
+	do_info(StreamID, Exit, [
+		{error_response, 500, #{<<"content-length">> => <<"0">>}, <<>>}
+	|Commands], State);
+%% Request body, auto mode, no body buffered.
+info(StreamID, Info={read_body, Ref, auto, infinity}, State=#state{read_body_buffer= <<>>}) ->
+	do_info(StreamID, Info, [], State#state{
+		read_body_ref=Ref,
+		read_body_length=auto
+	});
+%% Request body, auto mode, body buffered or complete.
+info(StreamID, Info={read_body, Ref, auto, infinity}, State=#state{pid=Pid,
+		read_body_is_fin=IsFin, read_body_buffer=Buffer, body_length=BodyLen}) ->
+	send_request_body(Pid, Ref, IsFin, BodyLen, Buffer),
+	do_info(StreamID, Info, [{flow, byte_size(Buffer)}],
+		State#state{read_body_buffer= <<>>});
 %% Request body, body buffered large enough or complete.
-info(_StreamID, {read_body, Ref, Length}, State=#state{pid=Pid, read_body_is_fin=IsFin, read_body_buffer=Data})
-		when element(1, IsFin) =:= fin; byte_size(Data) >= Length ->
-	Pid ! {request_body, Ref, IsFin, Data},
-	{[], State#state{read_body_buffer= <<>>}};
+%%
+%% We do not send a 100 continue response if the client
+%% already started sending the body.
+info(StreamID, Info={read_body, Ref, Length, _}, State=#state{pid=Pid,
+		read_body_is_fin=IsFin, read_body_buffer=Buffer, body_length=BodyLen})
+		when IsFin =:= fin; byte_size(Buffer) >= Length ->
+	send_request_body(Pid, Ref, IsFin, BodyLen, Buffer),
+	do_info(StreamID, Info, [], State#state{read_body_buffer= <<>>});
 %% Request body, not enough to send yet.
-info(_StreamID, {read_body, Ref, Length}, State) ->
-	{[{flow, Length}], State#state{read_body_ref=Ref, read_body_length=Length}};
+info(StreamID, Info={read_body, Ref, Length, Period}, State=#state{expect=Expect}) ->
+	Commands = case Expect of
+		continue -> [{inform, 100, #{}}, {flow, Length}];
+		undefined -> [{flow, Length}]
+	end,
+	%% @todo Handle the case where Period =:= infinity.
+	TRef = erlang:send_after(Period, self(), {{self(), StreamID}, {read_body_timeout, Ref}}),
+	do_info(StreamID, Info, Commands, State#state{
+		read_body_ref=Ref,
+		read_body_timer_ref=TRef,
+		read_body_length=Length
+	});
+%% Request body reading timeout; send what we got.
+info(StreamID, Info={read_body_timeout, Ref}, State=#state{pid=Pid, read_body_ref=Ref,
+		read_body_is_fin=IsFin, read_body_buffer=Buffer, body_length=BodyLen}) ->
+	send_request_body(Pid, Ref, IsFin, BodyLen, Buffer),
+	do_info(StreamID, Info, [], State#state{
+		read_body_ref=undefined,
+		read_body_timer_ref=undefined,
+		read_body_buffer= <<>>
+	});
+info(StreamID, Info={read_body_timeout, _}, State) ->
+	do_info(StreamID, Info, [], State);
 %% Response.
-info(_StreamID, Response = {response, _, _, _}, State) ->
-	{[Response], State};
-info(_StreamID, Headers = {headers, _, _}, State) ->
-	{[Headers], State};
-info(_StreamID, Data = {data, _, _}, State) ->
-	{[Data], State};
-info(_StreamID, SwitchProtocol = {switch_protocol, _, _, _}, State) ->
-	{[SwitchProtocol], State};
-%% Stray message.
-info(_StreamID, _Msg, State) ->
-	%% @todo Error report.
-	%% @todo Cleanup if no reply was sent when stream ends.
-	{[], State}.
+%%
+%% We reset the expect field when a 100 continue response
+%% is sent or when any final response is sent.
+info(StreamID, Inform={inform, Status, _}, State0) ->
+	State = case cow_http:status_to_integer(Status) of
+		100 -> State0#state{expect=undefined};
+		_ -> State0
+	end,
+	do_info(StreamID, Inform, [Inform], State);
+info(StreamID, Response={response, _, _, _}, State) ->
+	do_info(StreamID, Response, [Response], State#state{expect=undefined});
+info(StreamID, Headers={headers, _, _}, State) ->
+	do_info(StreamID, Headers, [Headers], State#state{expect=undefined});
+info(StreamID, Data={data, _, _}, State) ->
+	do_info(StreamID, Data, [Data], State);
+info(StreamID, Trailers={trailers, _}, State) ->
+	do_info(StreamID, Trailers, [Trailers], State);
+info(StreamID, Push={push, _, _, _, _, _, _, _}, State) ->
+	do_info(StreamID, Push, [Push], State);
+info(StreamID, SwitchProtocol={switch_protocol, _, _, _}, State) ->
+	do_info(StreamID, SwitchProtocol, [SwitchProtocol], State#state{expect=undefined});
+%% Unknown message, either stray or meant for a handler down the line.
+info(StreamID, Info, State) ->
+	do_info(StreamID, Info, [], State).
 
-%% @todo proper specs
--spec terminate(_,_,_) -> _.
-terminate(_StreamID, _Reason, _State) ->
+do_info(StreamID, Info, Commands1, State0=#state{next=Next0}) ->
+	{Commands2, Next} = cowboy_stream:info(StreamID, Info, Next0),
+	{Commands1 ++ Commands2, State0#state{next=Next}}.
+
+-spec terminate(cowboy_stream:streamid(), cowboy_stream:reason(), #state{}) -> ok.
+terminate(StreamID, Reason, #state{next=Next}) ->
+	cowboy_stream:terminate(StreamID, Reason, Next).
+
+-spec early_error(cowboy_stream:streamid(), cowboy_stream:reason(),
+	cowboy_stream:partial_req(), Resp, cowboy:opts()) -> Resp
+	when Resp::cowboy_stream:resp_command().
+early_error(StreamID, Reason, PartialReq, Resp, Opts) ->
+	cowboy_stream:early_error(StreamID, Reason, PartialReq, Resp, Opts).
+
+send_request_body(Pid, Ref, nofin, _, Data) ->
+	Pid ! {request_body, Ref, nofin, Data},
+	ok;
+send_request_body(Pid, Ref, fin, BodyLen, Data) ->
+	Pid ! {request_body, Ref, fin, BodyLen, Data},
 	ok.
-
-%% We use ~999999p here instead of ~w because the latter doesn't
-%% support printable strings.
-report_crash(_, _, _, normal, _) ->
-	ok;
-report_crash(_, _, _, shutdown, _) ->
-	ok;
-report_crash(_, _, _, {shutdown, _}, _) ->
-	ok;
-report_crash(Ref, StreamID, Pid, Reason, Stacktrace) ->
-	error_logger:error_msg(
-		"Ranch listener ~p, connection process ~p, stream ~p "
-		"had its request process ~p exit with reason "
-		"~999999p and stacktrace ~999999p~n",
-		[Ref, self(), StreamID, Pid, Reason, Stacktrace]).
 
 %% Request process.
 
-%% This hack is necessary because proc_lib does not propagate
-%% stacktraces by default. This is ugly because we end up
-%% having two try/catch instead of one (the one in proc_lib),
-%% just to add the stacktrace information.
+%% We catch all exceptions in order to add the stacktrace to
+%% the exit reason as it is not propagated by proc_lib otherwise
+%% and therefore not present in the 'EXIT' message. We want
+%% the stacktrace in order to simplify debugging of errors.
 %%
-%% @todo Remove whenever proc_lib propagates stacktraces.
--spec proc_lib_hack(_, _, _) -> _.
-proc_lib_hack(Req, Env, Middlewares) ->
+%% This + the behavior in proc_lib means that we will get a
+%% {Reason, Stacktrace} tuple for every exceptions, instead of
+%% just for errors and throws.
+%%
+%% @todo Better spec.
+-spec request_process(_, _, _) -> _.
+request_process(Req, Env, Middlewares) ->
+	OTP = erlang:system_info(otp_release),
 	try
 		execute(Req, Env, Middlewares)
 	catch
-		_:Reason when element(1, Reason) =:= cowboy_handler ->
-			exit(Reason);
-		_:Reason ->
-			exit({Reason, erlang:get_stacktrace()})
+		exit:Reason ->
+			Stacktrace = erlang:get_stacktrace(),
+			erlang:raise(exit, {Reason, Stacktrace}, Stacktrace);
+		%% OTP 19 does not propagate any exception stacktraces,
+		%% we therefore add it for every class of exception.
+		_:Reason when OTP =:= "19" ->
+			Stacktrace = erlang:get_stacktrace(),
+			erlang:raise(exit, {Reason, Stacktrace}, Stacktrace);
+		%% @todo I don't think this clause is necessary.
+		Class:Reason ->
+			erlang:raise(Class, Reason, erlang:get_stacktrace())
 	end.
 
 %% @todo

@@ -1,4 +1,4 @@
-%% Copyright (c) 2012-2015, Loïc Hoguin <essen@ninenines.eu>
+%% Copyright (c) 2012-2018, Loïc Hoguin <essen@ninenines.eu>
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -17,7 +17,10 @@
 -export([sendfile/6]).
 
 -type socket() :: any().
+-export_type([socket/0]).
+
 -type opts() :: any().
+-type stats() :: any().
 -type sendfile_opts() :: [{chunk_size, non_neg_integer()}].
 -export_type([sendfile_opts/0]).
 
@@ -27,7 +30,7 @@
 -callback listen(opts()) -> {ok, socket()} | {error, atom()}.
 -callback accept(socket(), timeout())
 	-> {ok, socket()} | {error, closed | timeout | atom()}.
--callback accept_ack(socket(), timeout()) -> ok.
+-callback handshake(socket(), opts(), timeout()) -> {ok, socket()} | {error, any()}.
 -callback connect(string(), inet:port_number(), opts())
 	-> {ok, socket()} | {error, atom()}.
 -callback connect(string(), inet:port_number(), opts(), timeout())
@@ -43,6 +46,9 @@
 		non_neg_integer(), sendfile_opts())
 	-> {ok, non_neg_integer()} | {error, atom()}.
 -callback setopts(socket(), opts()) -> ok | {error, atom()}.
+-callback getopts(socket(), [atom()]) -> {ok, opts()} | {error, atom()}.
+-callback getstat(socket()) -> {ok, stats()} | {error, atom()}.
+-callback getstat(socket(), [atom()]) -> {ok, stats()} | {error, atom()}.
 -callback controlling_process(socket(), pid())
 	-> ok | {error, closed | not_owner | atom()}.
 -callback peername(socket())
@@ -110,7 +116,7 @@ chunk_size(Opts) ->
 
 -spec sendfile_loop(module(), socket(), file:fd(), non_neg_integer(),
 		non_neg_integer(), pos_integer())
-	-> {ok, non_neg_integer()} | {error, term()}.
+	-> {ok, non_neg_integer()} | {error, any()}.
 sendfile_loop(_Transport, _Socket, _RawFile, Sent, Sent, _ChunkSize)
 		when Sent =/= 0 ->
 	%% All requested data has been read and sent, return number of bytes sent.
