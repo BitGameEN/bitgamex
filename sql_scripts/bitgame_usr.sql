@@ -41,6 +41,18 @@ CREATE TABLE `game` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏';
 
 -- ----------------------------
+--  Table structure for `game_package`
+-- ----------------------------
+DROP TABLE IF EXISTS `game_package`;
+CREATE TABLE `game_package` (
+  `game_id` int(11) NOT NULL COMMENT '游戏id',
+  `package_id` int(11) NOT NULL COMMENT '包id',
+  `mining_rule` varchar(255) NOT NULL DEFAULT '[]' COMMENT 'erlang, 格式例子：[{''BGX'', 30}, {''BTC'', 10}, {''ETH'', 10}, {''ELA'', 50}]',
+  `mining_pools` varchar(1024) NOT NULL DEFAULT '[]' COMMENT 'erlang, 格式：[{gold_type, mining_start_time, mining_output_first_day, half_life_days, chain_type, amount}]',
+  PRIMARY KEY (`game_id`,`package_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏包';
+
+-- ----------------------------
 --  Table structure for `game_reclaimed_gold`
 -- ----------------------------
 DROP TABLE IF EXISTS `game_reclaimed_gold`;
@@ -124,6 +136,7 @@ CREATE TABLE `user` (
   `google_id` varchar(40) NOT NULL DEFAULT '' COMMENT '绑定谷歌id',
   `facebook_id` varchar(40) NOT NULL DEFAULT '' COMMENT '绑定脸书id',
   `current_game_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '当前所在游戏',
+  `current_game_package_id` int(11) NOT NULL DEFAULT '0' COMMENT '当前所在游戏包id',
   `current_game_uid` varchar(50) NOT NULL DEFAULT '' COMMENT '当前所在游戏用户标识',
   `session_token` varchar(50) NOT NULL DEFAULT '' COMMENT '会话令牌',
   `lang` varchar(20) NOT NULL DEFAULT '' COMMENT '语言',
@@ -148,7 +161,8 @@ CREATE TABLE `user` (
   KEY `google_id` (`google_id`) USING BTREE,
   KEY `facebook_id` (`facebook_id`) USING BTREE,
   KEY `user_name` (`user_name`) USING BTREE,
-  KEY `hash_id` (`hash_id`) USING BTREE
+  KEY `hash_id` (`hash_id`) USING BTREE,
+  KEY `current_game_id_pkg_id` (`current_game_id`,`current_game_package_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='游戏中心账户';
 
 -- ----------------------------

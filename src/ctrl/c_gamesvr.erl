@@ -3,8 +3,8 @@
 %%% @Description: gamesvr的逻辑处理模块
 %%%--------------------------------------
 -module(c_gamesvr).
--export([get_game_data/4,
-         save_game_data/3,
+-export([get_game_data/5,
+         save_game_data/4,
          transfer_coin_in_game/6,
          get_coin_list_to_draw/2,
          draw_coin/3,
@@ -23,7 +23,7 @@
 -include("record_usr_gold_transfer.hrl").
 
 %% 获取玩家的游戏数据
-get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
+get_game_data(GameId, PkgId, UserId, DoLogin, LoginArgs) ->
   try
     run_data:trans_begin(),
 
@@ -42,7 +42,7 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                                     time = Now}),
                         run_role_gold:set_one(#run_role_gold{player_id = UserId, game_id = GameId, gold = <<"{}">>, time = Now}),
                         run_role_gold_to_draw:set_one(#run_role_gold_to_draw{player_id = UserId, game_id = GameId,
-                                                                             gold_list = [{Now, lib_mining:get_rand_gold_type(GameId), 0.01}], time = Now});
+                                                                             gold_list = [{Now, lib_mining:get_rand_gold_type(GameId, PkgId), 0.01}], time = Now});
                     false -> void
                 end,
                 <<>>;
@@ -55,7 +55,7 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
                                         last_login_ip = ?T2B(PeerIp),
                                         time = Now}),
                         % 登录给金币
-                        lib_mining:distribute_login_delta_golds(UserId, GameId, Now - Role#run_role.last_login_time);
+                        lib_mining:distribute_login_delta_golds(UserId, GameId, PkgId, Now - Role#run_role.last_login_time);
                     false -> void
                 end,
                 Role#run_role.game_data
@@ -79,7 +79,7 @@ get_game_data(GameId, UserId, DoLogin, LoginArgs) ->
         throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
-save_game_data(GameId, UserId, GameData) ->
+save_game_data(GameId, PkgId, UserId, GameData) ->
   try
     run_data:trans_begin(),
 
@@ -103,12 +103,12 @@ save_game_data(GameId, UserId, GameData) ->
                 LuaState0 = luerl:init(),
                 {_, LuaState} = luerl:do(BalanceLuaF, LuaState0),
                 {[V], _} = luerl:call_function([f], [OldGameData, GameData], LuaState),
-                {lib_mining:get_rand_gold_type(GameId), V}
+                {lib_mining:get_rand_gold_type(GameId, PkgId), V}
         end,
 
     case DeltaGold > 0 of
         true ->
-            mod_distributor:req_add_balance(#add_gold_req{uid = UserId, game_id = GameId, gold_type = GoldType, delta_gold = DeltaGold, time = Now});
+            mod_distributor:req_add_balance(#add_gold_req{uid = UserId, game_id = GameId, game_pkg_id = PkgId, gold_type = GoldType, delta_gold = DeltaGold, time = Now});
         false ->
             lib_role_gold:put_gold_drain_type_and_drain_id(save_game_data, GameId, DeltaGold),
             lib_role_gold:add_gold(UserId, GameId, GoldType, DeltaGold),

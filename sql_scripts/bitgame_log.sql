@@ -122,6 +122,7 @@ DROP TABLE IF EXISTS `player_login`;
 CREATE TABLE `player_login` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) DEFAULT '0' COMMENT '游戏id',
+  `game_package_id` int(11) DEFAULT '0' COMMENT '游戏包id',
   `player_id` int(11) DEFAULT '0' COMMENT '玩家id',
   `device_id` varchar(100) DEFAULT '' COMMENT '设备id',
   `device_model` varchar(32) DEFAULT '' COMMENT '设备型号',

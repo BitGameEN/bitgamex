@@ -7,6 +7,7 @@
 		key_id,
 		id = 0, % 自增id
 		game_id = 0, % 游戏id
+		game_package_id = 0, % 游戏包id
 		player_id = 0, % 玩家id
 		device_id = <<"">>, % 设备id
 		device_model = <<"">>, % 设备型号

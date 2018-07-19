@@ -15,6 +15,7 @@
 -record(add_gold_req, {
     uid = 0,
     game_id = 0,
+    game_pkg_id = 0,
     gold_type = <<>>,
     delta_gold = 0,
     time = 0

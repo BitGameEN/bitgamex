@@ -10,6 +10,12 @@
 -include("record_usr_game.hrl").
 -include("record_usr_user.hrl").
 
+-define(SPLIT_GID(GidBin),
+        case binary:split(GidBin, [<<"_">>]) of
+            [GameIdBin__, PackageIdBin__] -> {binary_to_integer(GameIdBin__), binary_to_integer(PackageIdBin__)};
+            [GameIdBin__] -> {binary_to_integer(GameIdBin__), 0}
+        end).
+
 init(Req, Opts) ->
     Method = cowboy_req:method(Req),
     #{a := Action} = cowboy_req:match_qs([a], Req),
@@ -91,7 +97,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     Time = binary_to_integer(TimeBin),
     NewGuest = binary_to_integer(NewGuestBin),
     GameKey =
@@ -111,7 +117,7 @@ action(<<"GET">>, <<"login_game">> = Action, Req) ->
     end,
     {PeerIp, _} = maps:get(peer, Req),
     lock_user(Uid),
-    c_gatesvr:api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]);
+    c_gatesvr:api_login_game([Uid, GameId, PkgId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]);
 
 % https://api.bitgamex.com/?a=change_password&uid=xx&game_id=xx&token=xx&user_name=xx&old_password=xx&new_password=xx&time=xx&sign=xx
 action(<<"GET">>, <<"change_password">> = Action, Req) ->
@@ -125,7 +131,7 @@ action(<<"GET">>, <<"change_password">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -142,8 +148,8 @@ action(<<"GET">>, <<"change_password">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -162,7 +168,7 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -179,8 +185,8 @@ action(<<"GET">>, <<"bind_user">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -199,7 +205,7 @@ action(<<"GET">>, <<"switch_user">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -216,8 +222,8 @@ action(<<"GET">>, <<"switch_user">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -236,7 +242,7 @@ action(<<"GET">>, <<"get_game">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     GameKey =
         case usr_game:get_one(GameId) of
             #usr_game{open_status = OpenStatus, game_key = GKey} ->
@@ -246,8 +252,8 @@ action(<<"GET">>, <<"get_game">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -272,7 +278,7 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -289,8 +295,8 @@ action(<<"POST">>, <<"save_game">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -309,7 +315,7 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     DstUid = binary_to_integer(DstUidBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
@@ -340,8 +346,8 @@ action(<<"GET">>, <<"transfer_coin_in_game">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -365,7 +371,7 @@ action(<<"GET">>, <<"send_verify_code">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     SendType = binary_to_integer(SendTypeBin),
     %Time = binary_to_integer(TimeBin),
     case lists:member(SendType, [1,2,3,4]) of
@@ -387,8 +393,8 @@ action(<<"GET">>, <<"send_verify_code">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -407,7 +413,7 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -424,8 +430,8 @@ action(<<"GET">>, <<"bind_exchange_accid">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -449,7 +455,7 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
         case usr_game:get_one(GameId) of
@@ -466,8 +472,8 @@ action(<<"GET">>, <<"bind_wallet">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -490,7 +496,7 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
@@ -516,8 +522,8 @@ action(<<"GET">>, <<"transfer_coin_to_exchange">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -540,7 +546,7 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
@@ -566,8 +572,8 @@ action(<<"GET">>, <<"transfer_coin_to_wallet">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken, bind_xchg_accid = BindXchgAccId, bind_wallet_addr = BindWalletAddr} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -605,10 +611,10 @@ action(<<"GET">>, <<"recharge_coin_to_game">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
-    GoldTypes = lib_mining:get_gold_types(GameId),
+    GoldTypes = lib_mining:get_gold_types(GameId, PkgId),
     case lists:member(binary_to_atom(GoldType, utf8), GoldTypes) of
         false -> throw({?ERRNO_WRONG_PARAM, <<"wrong gold type">>});
         true -> void
@@ -632,8 +638,8 @@ action(<<"GET">>, <<"recharge_coin_to_game">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken, bind_xchg_accid = BindXchgAccId} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -656,7 +662,7 @@ action(<<"GET">>, <<"get_coin_list_to_draw">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     GameKey =
         case usr_game:get_one(GameId) of
             #usr_game{open_status = OpenStatus, game_key = GKey} ->
@@ -666,8 +672,8 @@ action(<<"GET">>, <<"get_coin_list_to_draw">> = Action, Req) ->
                 end;
             _ -> throw({?ERRNO_WRONG_PARAM, <<"wrong game id">>})
         end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -686,7 +692,7 @@ action(<<"GET">>, <<"draw_coin">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     CoinId = binary_to_integer(CoinIdBin),
     %Time = binary_to_integer(TimeBin),
     GameKey =
@@ -704,8 +710,8 @@ action(<<"GET">>, <<"draw_coin">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,
@@ -724,7 +730,7 @@ action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
         false -> void
     end,
     Uid = binary_to_integer(UidBin),
-    GameId = binary_to_integer(GameIdBin),
+    {GameId, PkgId} = ?SPLIT_GID(GameIdBin),
     Amount = util:binary_to_float(AmountBin),
     %Time = binary_to_integer(TimeBin),
     case lists:member(GoldType, ?SUPPORT_GOLD_TYPES) of
@@ -750,8 +756,8 @@ action(<<"GET">>, <<"consume_coin">> = Action, Req) ->
         false -> throw({?ERRNO_VERIFY_FAILED, <<"md5 check failed">>});
         true -> void
     end,
-    #usr_user{current_game_id = TheGameId, session_token = TheToken} = User = usr_user:get_one(Uid),
-    case TheGameId =:= GameId andalso TheToken =:= Token of
+    #usr_user{current_game_id = TheGameId, current_game_package_id = ThePkgId, session_token = TheToken} = User = usr_user:get_one(Uid),
+    case TheGameId =:= GameId andalso ThePkgId =:= PkgId andalso TheToken =:= Token of
         false -> throw({?ERRNO_VERIFY_FAILED, <<"token check failed">>});
         true -> void
     end,

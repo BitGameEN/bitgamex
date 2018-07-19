@@ -30,7 +30,7 @@
 
 
 %% 登录游戏接口
-api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
+api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
     Now = util:unixtime(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     UserId =
@@ -101,12 +101,14 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
     ToUpdateUser = User#usr_user{hash_id = HashId,
                                  device_id = DeviceId,
                                  current_game_id = GameId,
+                                 current_game_package_id = PkgId,
                                  session_token = SessionToken,
                                  last_login_time = Now,
                                  time = Now},
     usr_user:set_one(ToUpdateUser),
     LogR = #log_player_login{
                 game_id = GameId,
+                game_package_id = PkgId,
                 player_id = UserId,
                 device_id = DeviceId,
                 device_model = util:esc(util:device_model(DeviceModel)),
@@ -119,11 +121,11 @@ api_login_game([Uid, GameId, DeviceId, <<>> = UserName, Password, Time, NewGuest
     log_player_login:set_one(LogR),
     % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
     run_data:trans_commit(),
-    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
+    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, PkgId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, hash_id => HashId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}};
-api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) when UserName =/= <<>> ->
+api_login_game([Uid, GameId, PkgId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) when UserName =/= <<>> ->
     Now = util:unixtime(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     % todo: 以后得考虑用手机号一起绑定注册（发验证码）或QQ、微信授权登录（而这实际上相当于获取一个device_id），避免无限建小号
@@ -176,12 +178,14 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
     ToUpdateUser = User#usr_user{hash_id = HashId,
                                  device_id = DeviceId,
                                  current_game_id = GameId,
+                                 current_game_package_id = PkgId,
                                  session_token = SessionToken,
                                  last_login_time = Now,
                                  time = Now},
     usr_user:set_one(ToUpdateUser),
     LogR = #log_player_login{
                 game_id = GameId,
+                game_package_id = PkgId,
                 player_id = UserId,
                 device_id = DeviceId,
                 device_model = util:esc(util:device_model(DeviceModel)),
@@ -194,7 +198,7 @@ api_login_game([Uid, GameId, DeviceId, UserName, Password, Time, NewGuest, Devic
     log_player_login:set_one(LogR),
     % 因为gamesvr上的rpc逻辑需要用到未提交的数据，所以先提交
     run_data:trans_commit(),
-    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, true, [Now, PeerIp]]),
+    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, PkgId, UserId, true, [Now, PeerIp]]),
     {ok, #{uid => UserId, hash_id => HashId, token => SessionToken, game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance,
            exchange_accid => User#usr_user.bind_xchg_accid, wallet_addr => User#usr_user.bind_wallet_addr,
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}}.
@@ -323,13 +327,13 @@ api_switch_user([#usr_user{id = CurrUserId, current_game_id = GameId, device_id 
     end.
 
 %% 存盘数据获取接口
-api_get_game([#usr_user{current_game_id = GameId, id = UserId} = User]) ->
-    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, UserId, false, []]),
+api_get_game([#usr_user{current_game_id = GameId, current_game_package_id = PkgId, id = UserId} = User]) ->
+    {ok, GameData, UserBalance, RoleBalance} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, get_game_data, [GameId, PkgId, UserId, false, []]),
     {ok, #{game_data => GameData, user_balance => UserBalance, role_balance => RoleBalance}}.
 
 %% 存盘接口
-api_save_game([#usr_user{current_game_id = GameId, id = UserId} = User, GameData]) ->
-    {ok, GameData, Balance, FRes} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, save_game_data, [GameId, UserId, GameData]),
+api_save_game([#usr_user{current_game_id = GameId, current_game_package_id = PkgId, id = UserId} = User, GameData]) ->
+    {ok, GameData, Balance, FRes} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, save_game_data, [GameId, PkgId, UserId, GameData]),
     {ok, #{game_data => GameData, role_balance => Balance, f_res => FRes}}.
 
 %% 转账游戏币给其他玩家的接口

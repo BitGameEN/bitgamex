@@ -18,6 +18,7 @@
 		google_id = <<"">>, % 绑定谷歌id
 		facebook_id = <<"">>, % 绑定脸书id
 		current_game_id = 0, % 当前所在游戏
+		current_game_package_id = 0, % 当前所在游戏包id
 		current_game_uid = <<"">>, % 当前所在游戏用户标识
 		session_token = <<"">>, % 会话令牌
 		lang = <<"">>, % 语言

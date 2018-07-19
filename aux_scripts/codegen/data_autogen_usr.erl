@@ -31,6 +31,7 @@ mysql_halt([Sql, Reason]) ->
 run() ->
     init_db(),
     gen("game", 0),
+    gen("game_package", 2),
     gen("game_reclaimed_gold"),
     gen("global_config"),
     gen("user", 1),
@@ -263,7 +264,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "\t\t\t\tfun() -> ~s:del_one(R) end,~n", [RecordName]),
     io:format(S, "\t\t\t\tvoid);~n", []),
     io:format(S, "\t\tfalse ->~n", []),
-    io:format(S, "\t\t\t~s = R#~s.key_id,~n", [PirId2, RecordName]),
+    io:format(S, "\t\t\t~s = R#~s.key_id,~n", [PriId, RecordName]),
     io:format(S, "\t\t\trun_data:db_write(del, R, fun() -> db_esql:execute(?DB_USR, <<\"delete from ~s where ~s\">>, [~s]) end),~n", [Table, gen_id_sql(PriNames), PirId2]),
     io:format(S, "\t\t\tcache:del(cache_key(R#~s.key_id))~n", [RecordName]),
     io:format(S, "\tend,~n", []),
@@ -274,7 +275,7 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "\tok.~n~n", []),
 
     io:format(S, "clean_all_cache(N) ->~n", []),
-    io:format(S, "\tcase db_esql:get_all(?DB_USR, <<\"select ~s from ~s limit ?, 1000\">>, [N * 1000]) of~n", [gen_pri_id(PriNames), Table]),
+    io:format(S, "\tcase db_esql:get_all(?DB_USR, <<\"select ~s from ~s limit ?, 1000\">>, [N * 1000]) of~n", [gen_id_no_bracket(PriNames, ","), Table]),
     io:format(S, "\t\t[] -> ok;~n", []),
     io:format(S, "\t\tRows ->~n", []),
     io:format(S, "\t\t\tF = fun(Id) -> cache:del(cache_key(Id)) end,~n", []),
@@ -306,7 +307,12 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldComments, Field
     io:format(S, "\t}.~n~n", []),
 
     io:format(S, "cache_key(~s = Id) ->~n", [PriId]),
-    io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s\">>, [~s])).~n~n", [RecordName, "~p", PirId2]),
+    case length(PriNames) of
+        1 ->
+            io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s\">>, [~s])).~n~n", [RecordName, "~p", PirId2]);
+        2 ->
+            io:format(S, "\tlist_to_binary(io_lib:format(<<\"~s_~s_~s\">>, [~s])).~n~n", [RecordName, "~p", "~p", PirId2])
+    end,
 
     file:close(S).
 
@@ -397,7 +403,9 @@ gen_id_no_bracket(FieldNames, Imploder) ->
     list_to_binary(L).
 
 gen_pri_id([FieldName]) ->
-    FieldName.
+    FieldName;
+gen_pri_id([FieldName1, FieldName2]) ->
+    <<"{", FieldName1/binary, ",", FieldName2/binary, "}">>.
 
 gen_id_sql([FieldName]) ->
     <<FieldName/binary, "=?">>;
