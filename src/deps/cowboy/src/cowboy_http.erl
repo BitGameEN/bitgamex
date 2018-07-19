@@ -134,8 +134,8 @@
 	children = cowboy_children:init() :: cowboy_children:children()
 }).
 
--include_lib("cowlib/include/cow_inline.hrl").
--include_lib("cowlib/include/cow_parse.hrl").
+-include("cow_inline.hrl").
+-include("cow_parse.hrl").
 
 -spec init(pid(), ranch:ref(), inet:socket(), module(), cowboy:opts()) -> ok.
 init(Parent, Ref, Socket, Transport, Opts) ->
