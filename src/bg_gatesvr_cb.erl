@@ -263,7 +263,7 @@ action(<<"GET">>, <<"get_game">> = Action, Req) ->
 % https://api.bitgamex.com/?a=save_game
 % POST内容：uid=xx&game_id=xx&token=xx&game_data=xx&time=xx&sign=xx
 action(<<"POST">>, <<"save_game">> = Action, Req) ->
-    {ok, PostVals, Req2} = cowboy_req:body_qs(Req),
+    {ok, PostVals, Req2} = cowboy_req:read_urlencoded_body(Req),
     UidBin0 = proplists:get_value(<<"uid">>, PostVals),
     GameIdBin0 = proplists:get_value(<<"game_id">>, PostVals),
     Token0 = proplists:get_value(<<"token">>, PostVals),
