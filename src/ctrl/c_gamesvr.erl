@@ -7,7 +7,7 @@
          save_game_data/4,
          transfer_coin_in_game/6,
          get_coin_list_to_draw/2,
-         draw_coin/3,
+         draw_coin/4,
          consume_coin/5]).
 
 -include("common.hrl").
@@ -189,7 +189,7 @@ get_coin_list_to_draw(GameId, UserId) ->
                    {integer_to_binary(TimeKey), {[{coin_type, GoldType}, {amount, Amount}, {from_type, ?MINING_DRAIN_TYPE_LOGIN}]}}
            end || One <- GoldList]}}.
 
-draw_coin(GameId, UserId, CoinId) ->
+draw_coin(GameId, PkgId, UserId, CoinId) ->
   try
     run_data:trans_begin(),
 
@@ -205,7 +205,7 @@ draw_coin(GameId, UserId, CoinId) ->
             lib_role_gold:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
             lib_role_gold:add_gold(UserId, GameId, GoldType, Amount),
             lib_role_gold_to_draw:put_gold_drain_type_and_drain_id(draw_coin, GoldType, Amount),
-            lib_role_gold_to_draw:delete_gold_to_draw(UserId, GameId, CoinId),
+            lib_role_gold_to_draw:delete_gold_to_draw(UserId, GameId, PkgId, CoinId),
             RoleGold = run_role_gold:get_one({GameId, UserId}),
             run_data:trans_commit(),
             {ok, RoleGold#run_role_gold.gold}

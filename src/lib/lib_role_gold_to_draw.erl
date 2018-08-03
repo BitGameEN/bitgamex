@@ -3,16 +3,17 @@
 %%% @Description: 角色待领金币相关处理
 %%%--------------------------------------
 -module(lib_role_gold_to_draw).
--export([add_gold_to_draw/5, delete_gold_to_draw/3, put_gold_drain_type_and_drain_id/3]).
+-export([add_gold_to_draw/6, delete_gold_to_draw/4, put_gold_drain_type_and_drain_id/3]).
 
 -include("common.hrl").
+-include("record_cfg_gold_type.hrl").
 -include("record_run_role_gold_to_draw.hrl").
 -include("record_log_gold_to_draw.hrl").
 
 -define(MAX_SIZE_GOLD_LIST, 20).
 
 % 调用者保证T（时间）不一样
-add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0, DrainType) when is_list(GoldListToDraw0) ->
+add_gold_to_draw(PlayerId, GameId, PkgId, GoldType, GoldListToDraw0, DrainType) when is_list(GoldListToDraw0) ->
     {true, Cas} = lock(PlayerId),
     try
         TheType = {GoldType, DrainType},
@@ -37,10 +38,16 @@ add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0, DrainType) when is
         OldGoldToDraw = lists:sum([V || {_, V} <- OldGoldListOfTheType]),
         DeltaGoldToDraw = lists:sum([V || {_, V} <- GoldListToDraw0]),
         NewGoldToDraw = OldGoldToDraw + DeltaGoldToDraw,
+        Chain = case cfg_gold_type:get(GoldType) of
+                    null -> <<>>;
+                    #gold_type{chain_type = CT} -> CT
+                end,
         R = #log_gold_to_draw{
                 player_id = PlayerId,
                 game_id = RoleGoldToDraw#run_role_gold_to_draw.game_id,
+                package_id = PkgId,
                 gold_type = GoldType,
+                chain_type = Chain,
                 delta = DeltaGoldToDraw,
                 old_value = OldGoldToDraw,
                 new_value = NewGoldToDraw,
@@ -63,7 +70,7 @@ add_gold_to_draw(PlayerId, GameId, GoldType, GoldListToDraw0, DrainType) when is
             throw({?ERRNO_EXCEPTION, ?T2B(ExceptionErr)})
     end.
 
-delete_gold_to_draw(PlayerId, GameId, CoinId) ->
+delete_gold_to_draw(PlayerId, GameId, PkgId, CoinId) ->
     {true, Cas} = lock(PlayerId),
     try
         RoleGoldToDraw = run_role_gold_to_draw:get_one({GameId, PlayerId}),
@@ -80,10 +87,16 @@ delete_gold_to_draw(PlayerId, GameId, CoinId) ->
                 OldGoldToDraw = lists:sum([V || {_, Type, V} <- GoldList, Type =:= TheType]),
                 DeltaGoldToDraw = -Amount,
                 NewGoldToDraw = lists:sum([V || {_, Type, V} <- NewGoldList, Type =:= TheType]),
+                Chain = case cfg_gold_type:get(GoldType) of
+                            null -> <<>>;
+                            #gold_type{chain_type = CT} -> CT
+                        end,
                 R = #log_gold_to_draw{
                         player_id = PlayerId,
                         game_id = GameId,
+                        package_id = PkgId,
                         gold_type = GoldType,
+                        chain_type = Chain,
                         delta = DeltaGoldToDraw,
                         old_value = OldGoldToDraw,
                         new_value = NewGoldToDraw,

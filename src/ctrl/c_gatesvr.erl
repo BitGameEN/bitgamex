@@ -383,8 +383,8 @@ api_get_coin_list_to_draw([#usr_user{current_game_id = GameId, id = UserId} = Us
     {ok, #{coin_list => CoinList}}.
 
 %% 领取游戏币的接口
-api_draw_coin([#usr_user{current_game_id = GameId, id = UserId} = User, CoinId]) ->
-    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, draw_coin, [GameId, UserId, CoinId]),
+api_draw_coin([#usr_user{current_game_id = GameId, current_game_package_id = PkgId, id = UserId} = User, CoinId]) ->
+    {ok, RoleGold} = lib_rpc:rpc(?SVRTYPE_GAME, c_gamesvr, draw_coin, [GameId, PkgId, UserId, CoinId]),
     {ok, #{role_balance => RoleGold}}.
 
 %% 消耗游戏币的接口

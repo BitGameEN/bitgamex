@@ -70,11 +70,12 @@ distribute_game_delta_golds(Requests0, DurationSeconds) ->
                               true -> DistributeL0;
                               false -> [{K, util:round8d(Quota * V / Total), T} || {K, V, T} <- DistributeL0]
                           end,
-            TheGT = case ThePool of
-                        {_GameId, _PkgId, GT} -> GT;
-                        GT -> GT
-                    end,
-            [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
+            {ThePkgId, TheGT} =
+                case ThePool of
+                    {_GameId, PkgId, GT} -> {PkgId, GT};
+                    GT -> {0, GT}
+                end,
+            [lib_role_gold_to_draw:add_gold_to_draw(UserId, GameId, ThePkgId, TheGT, [{Time, AddGold}], ?MINING_DRAIN_TYPE_SAVEGAME) ||
                {{UserId, GameId}, AddGold, Time} <- DistributeL],
             % 幸运随机挖矿
             UidGidPairs = [{Uid, Gid} || #add_gold_req{uid = Uid, game_id = Gid} <- RequestsThePool],
@@ -84,7 +85,7 @@ distribute_game_delta_golds(Requests0, DurationSeconds) ->
             LuckyGameId = util:rand_one(Gids),
             RandomQuota = get_output_quota(random, ThePool, DurationSeconds),
             LuckyAddGold = util:round8d(RandomQuota),
-            lib_role_gold_to_draw:add_gold_to_draw(LuckyUserId, LuckyGameId, TheGT, [{util:unixtime(), LuckyAddGold}], ?MINING_DRAIN_TYPE_RANDOM)
+            lib_role_gold_to_draw:add_gold_to_draw(LuckyUserId, LuckyGameId, ThePkgId, TheGT, [{util:unixtime(), LuckyAddGold}], ?MINING_DRAIN_TYPE_RANDOM)
         end,
     [DistributeFunSamePool(Pool) || Pool <- Pools],
     ok.
@@ -120,7 +121,7 @@ distribute_login_delta_golds(PlayerId, GameId, PkgId, DurationSeconds0) ->
             Now = util:unixtime(),
             TimeList = [Now - (I - 1) * 7200 || I <- lists:seq(1, length(AddGoldList))],
             TimeToAddGoldPairs = lists:zip(TimeList, AddGoldList),
-            [lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, TheGT, [{T, G}], ?MINING_DRAIN_TYPE_LOGIN) || {T, G} <- TimeToAddGoldPairs];
+            [lib_role_gold_to_draw:add_gold_to_draw(PlayerId, GameId, PkgId, TheGT, [{T, G}], ?MINING_DRAIN_TYPE_LOGIN) || {T, G} <- TimeToAddGoldPairs];
         false -> void
     end,
     ok.
