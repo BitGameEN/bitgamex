@@ -20,7 +20,7 @@
 -include("record_usr_gold_transfer.hrl").
 
 %-define(URL_PREFIX, "https://open.bitgamex.org/api/").
--define(URL_PREFIX, "http://127.0.0.1:8081/").
+-define(URL_PREFIX, "http://127.0.0.1:9006/").
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
 -define(SEND_VERIFY_CODE_URL, ?URL_PREFIX ++ "sendverifycode").
 -define(BIND_ACCOUNT_URL, ?URL_PREFIX ++ "bindaccount").
