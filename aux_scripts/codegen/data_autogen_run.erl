@@ -1,6 +1,7 @@
 %%%--------------------------------------------------------
 %%% @Module  : data_autogen_run
 %%% @Description: 连接run库获取运行时表结构，自动生成数据访问代码
+%%%               当需要服务器无状态时，不要使用ets层
 %%%--------------------------------------------------------
 -module(data_autogen_run).
 -export([run/0]).
@@ -343,12 +344,12 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\t\t\t\t\t\t\tOld = get_one(R0#~s.key_id, anyway),~n", [RecordName]),
     io:format(S, "\t\t\t\t\t\t\tupdate_keymap_if_need(Old, R0);~n", []),
     io:format(S, "\t\t\t\t\t\tOld ->~n", []),
-    case UseMnesia of
-        false ->
-            io:format(S, "\t\t\t\t\t\t\tets:insert(~s, R0),~n", [ModuleName]);
-        true ->
-            io:format(S, "\t\t\t\t\t\t\tmnesia:dirty_write(~s, R0),~n", [ModuleName])
-    end,
+    %case UseMnesia of
+    %    false ->
+    %        io:format(S, "\t\t\t\t\t\t\tets:insert(~s, R0),~n", [ModuleName]);
+    %    true ->
+    %        io:format(S, "\t\t\t\t\t\t\tmnesia:dirty_write(~s, R0),~n", [ModuleName])
+    %end,
     io:format(S, "\t\t\t\t\t\t\tupdate_keymap_if_need(Old, R0)~n", []),
     io:format(S, "\t\t\t\t\tend,~n", []),
     io:format(S, "\t\t\t\t\tsyncdb(R0),~n", []),
@@ -518,12 +519,12 @@ gen_erl(Table, ErlName, ModuleName, FieldNames, FieldTypes, FieldDefaults, Field
     io:format(S, "\tinsert_ets(R).~n~n", []),
 
     io:format(S, "insert_ets(R) ->~n", []),
-    case UseMnesia of
-        false ->
-            io:format(S, "\tets:insert(~s, R),~n", [ModuleName]);
-        true ->
-            io:format(S, "\tmnesia:dirty_write(~s, R),~n", [ModuleName])
-    end,
+    %case UseMnesia of
+    %    false ->
+    %        io:format(S, "\tets:insert(~s, R),~n", [ModuleName]);
+    %    true ->
+    %        io:format(S, "\tmnesia:dirty_write(~s, R),~n", [ModuleName])
+    %end,
     GenKeyMapAddF = fun(OtherKey, OtherKeyLower, Indent0) ->
             OtherIdAnd = gen_id_no_bracket(OtherKeyLower, "_and_"),
             OtherIdRecord = gen_id_record_format(OtherKeyLower, <<"R">>, RecordName),

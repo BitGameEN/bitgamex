@@ -89,7 +89,6 @@ set_one(R0) when is_record(R0, run_role) ->
 							Old = get_one(R0#run_role.key_id, anyway),
 							update_keymap_if_need(Old, R0);
 						Old ->
-							ets:insert(run_role, R0),
 							update_keymap_if_need(Old, R0)
 					end,
 					syncdb(R0),
@@ -215,7 +214,6 @@ insert_ets_from_db([Game_id, Player_id|_] = Row) ->
 	insert_ets(R).
 
 insert_ets(R) ->
-	ets:insert(run_role, R),
 	ok.
 
 build_record_from_row([Player_id, Ver, Game_id, Create_time, Last_login_time, Last_login_ip, Game_data, Old_game_data, Power, Time]) ->

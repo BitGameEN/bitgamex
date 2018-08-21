@@ -8,6 +8,7 @@
 -export([start_link/4,
          rpc_server_add/5,
          server_id/0,
+         server_type/0,
          port/0,
          gamesvr_list/0,
          xchgsvr_list/0
@@ -32,21 +33,13 @@
 %% 查询当前服务器id号
 %% 返回:int()
 server_id() ->
-    case get(server_id) of
-        undefined ->
-            case lib_global_data:read_mem_only(server_id, 0) of
-                0 ->
-                    ServerId = gen_server:call(?MODULE, get_server_id),
-                    lib_global_data:write_mem_only(server_id, ServerId),
-                    put(server_id, ServerId),
-                    ServerId;
-                ServerId ->
-                    put(server_id, ServerId),
-                    ServerId
-            end;
-        ServerId ->
-            ServerId
-    end.
+    Node = node(),
+    {ok, MP} = re:compile("[0-9]+@", []),
+    {match, [S]} = re:run(atom_to_binary(Node, utf8), MP, [{capture, first, list}]),
+    list_to_integer(lists:sublist(S, 1, length(S) - 1)).
+
+server_type() ->
+    server_id() div 10000.
 
 port() ->
     gen_server:call(?MODULE, get_port).
