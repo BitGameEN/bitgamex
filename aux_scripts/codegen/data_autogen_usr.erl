@@ -37,6 +37,7 @@ run() ->
     gen("user", 1),
     gen("user_gold"),
     gen("gold_transfer", 0),
+    gen("useractivation", 0),
     ok.
 
 gen(Table0) ->

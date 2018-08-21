@@ -25,6 +25,7 @@
 -include("record_cfg_gold_type.hrl").
 -include("record_usr_user.hrl").
 -include("record_usr_user_gold.hrl").
+-include("record_usr_useractivation.hrl").
 -include("record_run_role.hrl").
 -include("record_log_player_login.hrl").
 
@@ -49,6 +50,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, N
                         U = usr_user:get_one(Id),
                         usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
                         Id;
                     Ids ->
                         case NewGuest =:= 0 of
@@ -69,6 +71,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, N
                                         U = usr_user:get_one(Id),
                                         usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
                                         Id;
                                     UnbindId -> % 还有未绑定的，则用这个未绑定的账号
                                         UnbindId
@@ -151,6 +154,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, UserName, Password, Time, NewGuest
                                 U = usr_user:get_one(Id),
                                 usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                 usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
+                                usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
                                 Id
                         end;
                     [Id|_] ->
