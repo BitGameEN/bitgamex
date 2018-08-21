@@ -349,12 +349,27 @@ api_send_verify_code([GameId, GameKey, Uid, ExchangeAccId, SendType]) ->
     end.
 
 %% 绑定 BIT.GAME 交易所账号的接口
-api_bind_exchange_accid([#usr_user{current_game_id = GameId, id = UserId} = User, GameKey, ExchangeAccId, VerifyCode]) ->
-    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, bind_exchange_accid, [GameId, GameKey, UserId, ExchangeAccId, VerifyCode]) of
-        ok ->
-            usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
-            {ok, #{exchange_accid => ExchangeAccId}};
-        Err -> throw(Err)
+api_bind_exchange_accid([#usr_user{current_game_id = GameId, id = UserId, bind_xchg_accid = NowExchangeAccId} = User, GameKey, ExchangeAccId, VerifyCode]) ->
+    case ExchangeAccId of
+        <<"unbindaccount">> ->
+            case NowExchangeAccId of
+                <<>> ->
+                    {ok, #{exchange_accid => <<>>}};
+                _ ->
+                    case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, unbind_exchange_accid, [GameId, GameKey, UserId, NowExchangeAccId, VerifyCode]) of
+                        ok ->
+                            usr_user:set_one(User#usr_user{bind_xchg_accid = <<>>, time = util:unixtime()}),
+                            {ok, #{exchange_accid => <<>>}};
+                        Err -> throw(Err)
+                    end
+            end;
+        _ ->
+            case lib_rpc:rpc(?SVRTYPE_XCHG, c_centsvr, bind_exchange_accid, [GameId, GameKey, UserId, ExchangeAccId, VerifyCode]) of
+                ok ->
+                    usr_user:set_one(User#usr_user{bind_xchg_accid = ExchangeAccId, time = util:unixtime()}),
+                    {ok, #{exchange_accid => ExchangeAccId}};
+                Err -> throw(Err)
+            end
     end.
 
 %% 绑定以太坊钱包地址的接口

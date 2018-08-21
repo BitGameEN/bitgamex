@@ -7,6 +7,7 @@
 -export([check_account/3,
          send_verify_code/5,
          bind_exchange_accid/5,
+         unbind_exchange_accid/5,
          transfer_gold_to_exchange/7,
          recharge_gold_to_game/7,
          consume_gold/5]).
@@ -24,6 +25,7 @@
 -define(CHECK_ACCOUNT_URL, ?URL_PREFIX ++ "checkaccount").
 -define(SEND_VERIFY_CODE_URL, ?URL_PREFIX ++ "sendverifycode").
 -define(BIND_ACCOUNT_URL, ?URL_PREFIX ++ "bindaccount").
+-define(UNBIND_ACCOUNT_URL, ?URL_PREFIX ++ "unbindaccount").
 -define(TRANSFER_TO_XCHG_URL, ?URL_PREFIX ++ "exchange").
 -define(TRANSFER_TO_WALLET_URL, "").
 -define(CONSUME_GOLD_URL, ?URL_PREFIX ++ "usetoken").
@@ -86,6 +88,25 @@ bind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, VerifyCode) ->
               {code, VerifyCode},
               {timestamp, NowMilliSecs}],
     case do_request(?BIND_ACCOUNT_URL, MD5Bin, Params) of
+        {ok, _} -> ok;
+        Error -> throw(Error)
+    end.
+
+%% https://github.com/BitGameEN/OpenAPI/blob/master/Zh/%E8%A7%A3%E9%99%A4%E7%BB%91%E5%AE%9A%E5%85%B3%E7%B3%BB.md
+unbind_exchange_accid(GameId, GameKey, PlayerId, ExchangeAccId, VerifyCode) ->
+    NowMilliSecs = util:longunixtime(),
+    MD5Bin = <<"appid=", (integer_to_binary(GameId))/binary,
+               "&bitaccount=", ExchangeAccId/binary,
+               "&code=", VerifyCode/binary,
+               "&timestamp=", (integer_to_binary(NowMilliSecs))/binary,
+               "&uid=", (integer_to_binary(PlayerId))/binary,
+               GameKey/binary>>,
+    Params = [{appid, GameId},
+              {bitaccount, ExchangeAccId},
+              {code, VerifyCode},
+              {timestamp, NowMilliSecs},
+              {uid, PlayerId}],
+    case do_request(?UNBIND_ACCOUNT_URL, MD5Bin, Params) of
         {ok, _} -> ok;
         Error -> throw(Error)
     end.
