@@ -33,6 +33,7 @@
 %% 登录游戏接口
 api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) ->
     Now = util:unixtime(),
+    NowStr = util:now_datetime_str(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     UserId =
         case Uid =:= 0 of
@@ -50,7 +51,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, N
                         U = usr_user:get_one(Id),
                         usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
-                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
+                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = NowStr}),
                         Id;
                     Ids ->
                         case NewGuest =:= 0 of
@@ -71,7 +72,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, N
                                         U = usr_user:get_one(Id),
                                         usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                         usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
-                                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
+                                        usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = NowStr}),
                                         Id;
                                     UnbindId -> % 还有未绑定的，则用这个未绑定的账号
                                         UnbindId
@@ -130,6 +131,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, <<>> = UserName, Password, Time, N
            gc_id => User#usr_user.ios_gamecenter_id, gg_id => User#usr_user.google_id, fb_id => User#usr_user.facebook_id}};
 api_login_game([Uid, GameId, PkgId, DeviceId, UserName, Password, Time, NewGuest, DeviceModel, OsType, OsVer, Lang, OrgDeviceId, GCId, GGId, FBId, PeerIp]) when UserName =/= <<>> ->
     Now = util:unixtime(),
+    NowStr = util:now_datetime_str(),
     SessionToken = create_session_token(Uid, GameId, DeviceId),
     % todo: 以后得考虑用手机号一起绑定注册（发验证码）或QQ、微信授权登录（而这实际上相当于获取一个device_id），避免无限建小号
     UserId =
@@ -154,7 +156,7 @@ api_login_game([Uid, GameId, PkgId, DeviceId, UserName, Password, Time, NewGuest
                                 U = usr_user:get_one(Id),
                                 usr_user:set_one(U#usr_user{hash_id = lib_user:get_hash_id(Id)}),
                                 usr_user_gold:set_one(#usr_user_gold{player_id = Id, gold = <<"{}">>, time = Now}),
-                                usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = Now}),
+                                usr_useractivation:set_one(#usr_useractivation{uid = Id, gameid = GameId, gameuid = integer_to_binary(Id), createdate = NowStr}),
                                 Id
                         end;
                     [Id|_] ->
