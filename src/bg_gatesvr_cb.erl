@@ -33,6 +33,8 @@ init(Req, Opts) ->
                 cowboy_req:reply(200, #{}, Reply, ReqCors);
             _ ->
                 try
+                    {ok, DBWriterPid} = mod_db_writer:start_link(0),
+                    put(db_writer_pid, DBWriterPid),
                     run_data:trans_begin(),
                     {ok, ResMap} = action(Method, Action, Req),
                     run_data:trans_commit(),
