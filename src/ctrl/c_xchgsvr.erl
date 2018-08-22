@@ -141,12 +141,12 @@ do_transfer_gold_to_exchange(Url, Params) ->
     %                %?INFO("JsonObject: ~p~n", [JsonObject]),
     %                JsonObject;
     %            _ ->
-    %                {error, ?ERRNO_HTTP_REQ_FAILED, Body}
+    %                {error, ?ERRNO_HTTP_REQ_FAILED, list_to_binary(Body)}
     %        end;
     %    {error, req_timedout} ->
     %        {error, ?ERRNO_HTTP_REQ_TIMEOUT, <<"request timeout">>};
     %    {error, Reason} ->
-    %        {error, ?ERRNO_HTTP_REQ_FAILED, Reason}
+    %        {error, ?ERRNO_HTTP_REQ_FAILED, ?T2B(Reason)}
     %end.
     [{<<"succ">>, 1}, {<<"balance">>, 0}].
 

@@ -379,11 +379,11 @@ do_request(Url, BinToSign, Params0) ->
                             {ErrCode, ErrMsg}
                     end;
                 _ ->
-                    throw({?ERRNO_HTTP_REQ_FAILED, Body})
+                    throw({?ERRNO_HTTP_REQ_FAILED, list_to_binary(Body)})
             end;
         {error, req_timedout} ->
             throw({?ERRNO_HTTP_REQ_TIMEOUT, <<"request timeout">>});
         {error, Reason} ->
-            throw({?ERRNO_HTTP_REQ_FAILED, Reason})
+            throw({?ERRNO_HTTP_REQ_FAILED, ?T2B(Reason)})
     end.
 
