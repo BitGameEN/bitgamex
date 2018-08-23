@@ -44,10 +44,12 @@ init(Req, Opts) ->
                     throw:{ErrNo, ErrMsg} when is_integer(ErrNo), is_binary(ErrMsg) ->
                         run_data:trans_rollback(),
                         unlock_user(),
+                        ?DBG("bg_gatesvr_cb throw(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, {ErrNo, ErrMsg}, erlang:get_stacktrace()]),
                         cowboy_req:reply(200, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
                     throw:{HttpCode, ErrNo, ErrMsg} when is_integer(HttpCode), is_integer(ErrNo), is_binary(ErrMsg) ->
                         run_data:trans_rollback(),
                         unlock_user(),
+                        ?DBG("bg_gatesvr_cb throw(action=~p):~nerr_msg=~p~nstack=~p~n", [Action, {HttpCode, ErrNo, ErrMsg}, erlang:get_stacktrace()]),
                         cowboy_req:reply(HttpCode, #{}, lib_http:reply_body_fail(Action, ErrNo, ErrMsg), Req);
                     _:ExceptionErr ->
                         run_data:trans_rollback(),
