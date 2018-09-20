@@ -1,18 +1,8 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : bitgamex
- Source Server Type    : MySQL
- Source Server Version : 50163
- Source Host           : localhost
- Source Database       : bitgame_cfg
-
- Target Server Type    : MySQL
- Target Server Version : 50163
- File Encoding         : utf-8
-
- Date: 06/22/2018 20:01:26 PM
-*/
+-- MySQL dump 10.13  Distrib 5.6.37, for linux-glibc2.12 (x86_64)
+--
+-- Host: localhost    Database: 
+-- ------------------------------------------------------
+-- Server version   5.6.37-log
 
 SET NAMES utf8;
 SET FOREIGN_KEY_CHECKS = 0;

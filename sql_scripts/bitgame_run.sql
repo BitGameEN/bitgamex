@@ -1,18 +1,8 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : bitgamex
- Source Server Type    : MySQL
- Source Server Version : 50163
- Source Host           : localhost
- Source Database       : bitgame_run
-
- Target Server Type    : MySQL
- Target Server Version : 50163
- File Encoding         : utf-8
-
- Date: 04/01/2018 09:33:08 AM
-*/
+-- MySQL dump 10.13  Distrib 5.6.37, for linux-glibc2.12 (x86_64)
+--
+-- Host: localhost    Database: 
+-- ------------------------------------------------------
+-- Server version   5.6.37-log
 
 SET NAMES utf8;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -60,5 +50,24 @@ CREATE TABLE `role_gold_to_draw` (
   `time` int(11) NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`,`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家待领金币';
+
+
+create table role_1 like role;
+create table role_2 like role;
+create table role_3 like role;
+create table role_4 like role;
+create table role_5 like role;
+
+create table role_gold_1 like role_gold;
+create table role_gold_2 like role_gold;
+create table role_gold_3 like role_gold;
+create table role_gold_4 like role_gold;
+create table role_gold_5 like role_gold;
+
+create table role_gold_to_draw_1 like role_gold_to_draw;
+create table role_gold_to_draw_2 like role_gold_to_draw;
+create table role_gold_to_draw_3 like role_gold_to_draw;
+create table role_gold_to_draw_4 like role_gold_to_draw;
+create table role_gold_to_draw_5 like role_gold_to_draw;
 
 SET FOREIGN_KEY_CHECKS = 1;

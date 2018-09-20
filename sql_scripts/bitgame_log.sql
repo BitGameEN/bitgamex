@@ -1,18 +1,8 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : bitgamex
- Source Server Type    : MySQL
- Source Server Version : 50163
- Source Host           : localhost
- Source Database       : bitgame_log
-
- Target Server Type    : MySQL
- Target Server Version : 50163
- File Encoding         : utf-8
-
- Date: 04/04/2018 14:41:52 PM
-*/
+-- MySQL dump 10.13  Distrib 5.6.37, for linux-glibc2.12 (x86_64)
+--
+-- Host: localhost    Database: 
+-- ------------------------------------------------------
+-- Server version   5.6.37-log
 
 SET NAMES utf8;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -97,8 +87,10 @@ DROP TABLE IF EXISTS `gold_to_draw`;
 CREATE TABLE `gold_to_draw` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增id',
   `game_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏id',
+  `package_id` int(11) NOT NULL DEFAULT '0' COMMENT '游戏包id',
   `player_id` int(11) NOT NULL DEFAULT '0' COMMENT '玩家id',
   `gold_type` varchar(20) NOT NULL DEFAULT '' COMMENT '币种：BGX, BTC, ETH, ...',
+  `chain_type` varchar(20) NOT NULL DEFAULT '' COMMENT '链',
   `delta` double NOT NULL DEFAULT '0' COMMENT '变化量，负数表示消耗',
   `old_value` double NOT NULL DEFAULT '0' COMMENT '旧值',
   `new_value` double NOT NULL DEFAULT '0' COMMENT '新值',

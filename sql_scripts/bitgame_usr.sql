@@ -1,18 +1,8 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : bitgamex
- Source Server Type    : MySQL
- Source Server Version : 50163
- Source Host           : localhost
- Source Database       : bitgame_usr
-
- Target Server Type    : MySQL
- Target Server Version : 50163
- File Encoding         : utf-8
-
- Date: 04/01/2018 09:11:30 AM
-*/
+-- MySQL dump 10.13  Distrib 5.6.37, for linux-glibc2.12 (x86_64)
+--
+-- Host: localhost    Database: 
+-- ------------------------------------------------------
+-- Server version   5.6.37-log
 
 SET NAMES utf8;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -175,5 +165,193 @@ CREATE TABLE `user_gold` (
   `time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '更新时间戳',
   PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='玩家金币';
+
+
+DROP TABLE IF EXISTS `exchangeorderinfo`;
+CREATE TABLE `exchangeorderinfo` (
+  `ID` int(10) NOT NULL AUTO_INCREMENT,
+  `OrderNo` varchar(50) NOT NULL COMMENT '用户中心订单号',
+  `Uid` int(11) NOT NULL COMMENT '游戏中心uid',
+  `ExchangeOrderNo` varchar(200) DEFAULT NULL COMMENT '交易所流水号',
+  `GameOrderNo` varchar(50) NOT NULL COMMENT '游戏订单号',
+  `ExUserid` int(11) NOT NULL COMMENT '交易所用户ID',
+  `ExAccount` varchar(150) DEFAULT NULL COMMENT '交易所账号名',
+  `WalletAdd` varchar(50) DEFAULT NULL COMMENT '钱包地址',
+  `GameID` int(8) NOT NULL COMMENT '游戏编号',
+  `GameUserID` varchar(50) DEFAULT NULL COMMENT '游戏账号唯一标识',
+  `Amount` double(36,18) NOT NULL COMMENT '交易代币数量',
+  `TokenSymbol` varchar(20) NOT NULL COMMENT '代币标识',
+  `StateType` int(1) NOT NULL COMMENT '1创建订单，2处理中，3处理成功，4处理失败',
+  `GameOrderData` varchar(255) DEFAULT NULL COMMENT '游戏订单数据可以json格式，原样返回',
+  `CreateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '订单创建时间',
+  `CreateOperator` varchar(20) DEFAULT NULL COMMENT '订单创建人',
+  `UpdateTime` timestamp NULL DEFAULT NULL COMMENT '订单完成时间',
+  `UpdateOperator` varchar(20) DEFAULT NULL COMMENT '订单状态更新人',
+  PRIMARY KEY (`ID`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `gamesymbolinfo`;
+CREATE TABLE `gamesymbolinfo` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `GameID` int(11) NOT NULL DEFAULT '0',
+  `ChainName` varchar(10) NOT NULL DEFAULT '',
+  `TokenSymbol` varchar(10) NOT NULL DEFAULT '',
+  `BitSymbol` varchar(20) NOT NULL DEFAULT '',
+  `IsUse` int(11) NOT NULL DEFAULT '1',
+  `CreateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `CreateOperator` varchar(20) DEFAULT '' COMMENT '创建人',
+  `UpdateTime` timestamp NULL DEFAULT NULL COMMENT '修改时间',
+  `UpdateOperator` varchar(20) DEFAULT '' COMMENT '修改人',
+  PRIMARY KEY (`ID`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `mining_complement_order`;
+CREATE TABLE `mining_complement_order` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `orderno` varchar(50) NOT NULL COMMENT '订单号',
+  `game_id` int(11) NOT NULL COMMENT '游戏编号',
+  `package_id` int(11) NOT NULL COMMENT '包编号',
+  `chain_name` varchar(10) NOT NULL COMMENT '主链名',
+  `symbol` varchar(10) NOT NULL COMMENT '币名',
+  `amount` double(32,16) NOT NULL COMMENT '金额',
+  `status` int(1) NOT NULL DEFAULT '1' COMMENT '状态1:未处理,2:处理中,3:已完成',
+  `from_id` int(11) DEFAULT NULL COMMENT '矿池ID(交易所总矿池ID或游戏自己矿池账号ID)',
+  `to_id` int(11) DEFAULT NULL COMMENT '游戏托管账号ID',
+  `start_time` datetime NOT NULL COMMENT '>=汇总开始时间',
+  `end_time` datetime NOT NULL COMMENT '<汇总结束时间',
+  `mining_count` int(10) NOT NULL COMMENT '汇总订单数',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '完成时间',
+  `type` int(1) DEFAULT NULL COMMENT '数据来源类型，1:游戏中心汇总数据，2:游戏接口汇总数据',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `miningorderinfo`;
+CREATE TABLE `miningorderinfo` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+  `game_id` int(11) NOT NULL COMMENT '游戏编号',
+  `package_id` int(11) NOT NULL COMMENT '包编号',
+  `chain_name` varchar(20) NOT NULL COMMENT '链名称',
+  `symbol` varchar(20) NOT NULL COMMENT '币种',
+  `amount` double(36,18) NOT NULL COMMENT '金额',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `miningpoolinfo`;
+CREATE TABLE `miningpoolinfo` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+  `game_id` int(11) NOT NULL COMMENT '指定游戏编号(0:通用设置)',
+  `package_id` int(11) NOT NULL COMMENT '游戏包编号',
+  `mining_pool_id` int(11) NOT NULL COMMENT '矿池账号ID 交易所总游戏矿池用于挖矿行为转账到游戏托管账户',
+  `chain_name` varchar(10) NOT NULL COMMENT '公链名称',
+  `symbol` varchar(10) NOT NULL COMMENT '币名',
+  `ratio` int(2) DEFAULT NULL COMMENT '挖矿所占比例，同游戏同包的所有币种sum(ratio)中所占的比例',
+  `status` int(1) NOT NULL COMMENT '0:off;1:on',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `rechargeorderinfo`;
+CREATE TABLE `rechargeorderinfo` (
+  `ID` int(10) NOT NULL AUTO_INCREMENT,
+  `OrderNo` varchar(50) NOT NULL COMMENT '用户中心订单号',
+  `Uid` int(20) NOT NULL COMMENT '游戏中心userid',
+  `ExchangeOrderNo` varchar(200) DEFAULT NULL COMMENT '交易所流水号',
+  `GameOrderNo` varchar(50) NOT NULL COMMENT '游戏订单号',
+  `ExUserid` int(11) NOT NULL COMMENT '交易所用户ID',
+  `ExAccount` varchar(150) DEFAULT NULL COMMENT '交易所账号名',
+  `WalletAdd` varchar(50) DEFAULT NULL COMMENT '钱包地址',
+  `GameID` int(8) NOT NULL COMMENT '游戏编号',
+  `GameUserID` varchar(50) DEFAULT NULL COMMENT '游戏账号唯一标识',
+  `Amount` double(36,18) NOT NULL COMMENT '交易代币数量',
+  `TokenSymbol` varchar(20) NOT NULL COMMENT '代币标识',
+  `StateType` int(1) NOT NULL COMMENT '1创建订单，2处理中，3处理成功，4处理失败',
+  `GameOrderData` varchar(255) DEFAULT NULL COMMENT '游戏订单数据可以json格式，原样返回',
+  `CreateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '订单创建时间',
+  `CreateOperator` varchar(20) DEFAULT NULL COMMENT '订单创建人',
+  `UpdateTime` timestamp NULL DEFAULT NULL COMMENT '订单完成时间',
+  `UpdateOperator` varchar(20) DEFAULT NULL COMMENT '订单状态修改人',
+  PRIMARY KEY (`ID`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `sendcodeinfo`;
+CREATE TABLE `sendcodeinfo` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `ExUid` int(11) NOT NULL,
+  `ExAccount` varchar(150) NOT NULL DEFAULT '',
+  `VerifyCode` varchar(8) NOT NULL,
+  `Appid` int(8) NOT NULL,
+  `Appuid` varchar(50) DEFAULT NULL,
+  `IsUse` int(1) NOT NULL,
+  `CreateDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UpdateDate` timestamp NULL DEFAULT NULL,
+  `SendType` int(11) NOT NULL COMMENT '发送类型，1绑定账号，2提取到交易所，3充值到游戏',
+  `Uid` int(11) DEFAULT NULL,
+  PRIMARY KEY (`ID`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `taskjobinfo`;
+CREATE TABLE `taskjobinfo` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `task_name` varchar(255) NOT NULL COMMENT '任务名称',
+  `status` int(1) NOT NULL COMMENT '任务状态',
+  `describe` varchar(255) DEFAULT NULL COMMENT '任务描述',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `transaction_fees`;
+CREATE TABLE `transaction_fees` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '手续费比例记录表',
+  `game_id` int(10) DEFAULT '0' COMMENT '游戏编号',
+  `symbol` varchar(20) DEFAULT '' COMMENT '币种',
+  `fees` decimal(10,8) DEFAULT NULL COMMENT '费率',
+  `type` int(1) DEFAULT '0' COMMENT '1:out(转出余额到交易所),2:in(转入余额到游戏)',
+  `is_use` int(1) DEFAULT '1' COMMENT '0:off,1:on',
+  `create_time` timestamp NULL DEFAULT NULL COMMENT '创建时间',
+  `update_time` timestamp NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `transactionrule`;
+CREATE TABLE `transactionrule` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `TokenSymbol` varchar(20) NOT NULL COMMENT '代币标识',
+  `MinAmount` double(32,18) NOT NULL DEFAULT '0.000000000000000000' COMMENT '交易最小值，0为不限制',
+  `MaxAmount` double(32,18) NOT NULL DEFAULT '0.000000000000000000' COMMENT '交易最大值，0为不限制',
+  `CreateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `CreateOperator` varchar(20) DEFAULT '' COMMENT '创建操作人',
+  `UpdateTime` timestamp NULL DEFAULT NULL COMMENT '更新时间',
+  `UpdateOperator` varchar(20) DEFAULT '' COMMENT '更新操作人',
+  `IsOpen` int(1) NOT NULL DEFAULT '1' COMMENT '开放状态，0-close, 1-open',
+  PRIMARY KEY (`ID`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `useractivation`;
+CREATE TABLE `useractivation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `uid` int(11) NOT NULL DEFAULT '0',
+  `gameid` int(11) NOT NULL DEFAULT '0',
+  `gameuid` varchar(50) NOT NULL DEFAULT '0',
+  `createdate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ExAccount` varchar(100) NOT NULL DEFAULT '',
+  `ExUid` int(10) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+
+INSERT INTO `game` VALUES (1,'','test',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,'[{\'BGX\',50},{\'ELA\',50}]',10067,'',0,'127.0.0.1',',act-act,eth-bgx,btc-btc,eth-eth,ela-ela,eth-man,',0),(2,'','pok',1,'3c579320371c4b12b9492fc75451ec80','',1,'[]',10067,'',0,'',',eth-pok,',1),(3,'','ela_little_game',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,'[{\'ELA\', 100}]',10067,'',0,'127.0.0.1',',ela-ela,',0),(4,'','ply_little_game',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,'[{\'PLY\', 100}]',10067,'',0,'127.0.0.1',',eth-ply,',0),(5,'','slg_game',1,'BIT.GAME.X.8.8.8.8','package.path = package.path .. \";../priv/?.lua;\"\njson = require \"json\"\n\nfunction f(s0, s)\n  t = json.decode(s)\n  return t[\"score\"] * 0.1\nend',1,'[{\'ELA\', 100}]',10067,'',0,'127.0.0.1',',ela-ela,eth-bgx,eth-eth,act-act,',0),(6,'','FishChain',1,'BIT.GAME.X.8.8.8.8','',1,'[]',10059,'',0,'',',eth-bgx,ela-ela,',3);
+INSERT INTO `game_package` VALUES (5,0,'[{\'BGX\', 100}]','[{\'BGX\', 1529668215, 10000.00, 730, eth, 100000000}]'),(5,1,'[{\'ETH\', 100}]','[{\'ETH\', 1529668215, 0.20, 730, eth, 1000}]'),(5,2,'[{\'ELA\', 100}]','[{\'ELA\', 1529668215, 1.00, 730, ela, 10000}]'),(5,3,'[{\'ACT\', 100}]','[{\'ACT\', 1529668215, 100.00, 730, act, 100000}]');
+INSERT INTO `gamesymbolinfo` VALUES (1,1,'eth','bgx','bgx',1,'2018-05-03 06:19:29','System',NULL,''),(2,2,'eth','pok','pok',1,'2018-05-02 12:04:33','System',NULL,''),(3,5,'eth','bgx','bgx',1,'2018-05-03 06:19:29','System',NULL,''),(4,1,'ela','ela','ela',1,'2018-05-03 06:19:29','System',NULL,''),(5,6,'eth','bgx','bgx',1,'2018-09-17 12:38:13','System',NULL,''),(6,6,'ela','ela','ela',1,'2018-09-17 12:38:13','System',NULL,'');
+INSERT INTO `global_config` VALUES (1,'transfer_discount_in_game','0.002'),(2,'transfer_discount_to_xchg','0.002'),(3,'gold_proportion_for_login','0.3'),(4,'gold_proportion_for_random','0.1'),(5,'gold_proportion_for_game','0.6');
+INSERT INTO `miningpoolinfo` VALUES (1,0,0,10059,'eth','bgx',1,1,NULL,NULL),(2,0,0,10059,'eth','eth',1,1,NULL,NULL),(3,1,0,10001,'eth','eth',1,1,NULL,NULL),(4,0,0,10059,'act','act',1,1,NULL,NULL),(5,0,0,10059,'btc','btc',1,1,NULL,NULL),(6,0,0,10059,'ela','ela',1,1,NULL,NULL),(7,0,0,10059,'eth','man',1,1,NULL,NULL),(8,0,0,10059,'eth','ply',1,1,NULL,NULL);
+INSERT INTO `sendcodeinfo` VALUES (1,10009,'','b3hd50s8',2,'testpokaccount',0,'2018-05-16 11:28:07',NULL,1,0),(2,10009,'','5i2fewrm',2,'testpokaccount',0,'2018-05-16 11:29:23',NULL,1,0),(3,10009,'','01fq8hch',2,'testpokaccount',0,'2018-05-16 11:31:13',NULL,1,0),(4,10002,'','x2fcrc6p',2,'testpokaccount',0,'2018-05-17 10:03:48',NULL,1,0),(5,10002,'','85gw2jdh',2,'testpokaccount',0,'2018-05-17 10:04:34',NULL,1,0),(6,10002,'','dfu8bg23',2,'testpokaccount',0,'2018-05-17 10:07:55',NULL,1,0),(7,10002,'','431427',2,'testpokaccount',0,'2018-05-17 10:08:25',NULL,1,0),(8,10002,'','891417',2,'testpokaccount',0,'2018-05-17 10:13:31',NULL,1,0),(9,10009,'','369734',2,'testpokaccount',1,'2018-05-18 04:01:09',NULL,1,0),(10,10003,'','906890',2,'30',0,'2018-05-21 03:41:45',NULL,1,0),(11,10003,'','5qvq0gcu',2,'30',0,'2018-05-21 03:45:37',NULL,1,0),(12,10003,'','454ptyh7',2,'30',0,'2018-05-21 03:46:41',NULL,1,0),(13,10003,'','643730',2,'30',1,'2018-05-21 05:27:01',NULL,1,0),(14,10003,'','761132',2,'30',1,'2018-05-21 08:16:39',NULL,1,0),(15,10003,'','220611',2,'30',1,'2018-05-21 08:41:51',NULL,4,36),(16,10003,'','611569',2,'30',1,'2018-05-21 08:59:21',NULL,1,0),(17,10003,'','826019',2,'30',1,'2018-05-21 09:12:15',NULL,2,36),(18,10003,'','025441',2,'30',1,'2018-05-21 09:31:09',NULL,2,36),(19,10003,'','192403',2,'30',1,'2018-05-21 09:39:57',NULL,3,36),(20,10009,'','635774',2,'testpokaccount',1,'2018-05-22 08:27:56',NULL,1,0),(21,10009,'','577159',2,'testpokaccount',1,'2018-05-23 05:50:25',NULL,1,0),(22,10009,'','730822',2,'testpokaccount',0,'2018-05-23 06:40:09',NULL,1,0),(23,10009,'','250390',2,'13777777777',1,'2018-05-23 06:46:28',NULL,1,0),(24,10009,'','607296',2,'13333333334',1,'2018-05-23 06:55:01',NULL,1,0),(25,10009,'','861476',2,'13333333334',1,'2018-05-23 06:57:16',NULL,1,0),(26,10009,'','979851',2,'13333333334',0,'2018-05-23 07:18:58',NULL,1,0),(27,10009,'','211256',2,'13333333334',1,'2018-05-23 07:21:02',NULL,2,75),(28,180402,'','564563',1,'72',0,'2018-06-20 03:53:07',NULL,1,72),(29,180402,'','867843',1,'72',0,'2018-06-20 09:38:28',NULL,1,72),(30,180402,'','258948',1,'72',0,'2018-06-20 09:43:02',NULL,1,72),(31,180402,'','965085',1,'72',1,'2018-06-20 09:54:19',NULL,2,72);
+INSERT INTO `taskjobinfo` VALUES (1,'挖矿转账任务',1,'游戏中心挖矿转账任务，每5分钟执行一次，调用交易所转账接口','2018-07-18 18:40:00','2018-07-18 18:40:05'),(2,'挖矿数据汇总任务',1,'将接收到的挖矿数据每个小时汇总一次等待提交接口调用','2018-07-23 00:00:00','2018-07-23 00:00:00');
+INSERT INTO `transaction_fees` VALUES (1,0,'',0.00500000,1,1,'2018-08-26 16:00:00','2018-08-26 16:00:00'),(2,0,'',0.00000000,2,1,'2018-08-26 16:00:00','2018-08-26 16:00:00');
+INSERT INTO `transactionrule` VALUES (1,'bgx',0.001000000000000000,10000.000000000000000000,'2018-04-28 12:41:54','System',NULL,'',1),(2,'pok',0.001000000000000000,10000.000000000000000000,'2018-04-28 12:41:54','System',NULL,'',1),(3,'ela',0.001000000000000000,10000.000000000000000000,'2018-09-17 12:38:16','System',NULL,'',1);
+
 
 SET FOREIGN_KEY_CHECKS = 1;
